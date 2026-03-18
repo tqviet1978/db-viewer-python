@@ -1,1343 +1,1522 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>DB Viewer</title>
-<script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
-<script src="https://unpkg.com/axios/dist/axios.min.js"></script>
-<style>
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-body {
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif;
-  font-size: 14px; height: 100vh; overflow: hidden;
-}
-:root {
-  --bg: #fff; --bg2: #f6f8fa; --border: #d0d7de;
-  --text: #1f2328; --text2: #656d76;
-  --accent: #0969da; --success: #1a7f37; --danger: #d1242f;
-  --btn-bg: #f6f8fa; --btn-border: rgba(27,31,36,0.15);
-  --btn-hover: #f3f4f6; --radius: 6px;
-  --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
-}
-/* Dark mode — applies when OS/browser prefers dark OR when .dark class is set on <html> */
-@media (prefers-color-scheme: dark) { :root:not(.light) { --bg:#0d1117; --bg2:#161b22; --border:#30363d; --text:#e6edf3; --text2:#8b949e; --accent:#58a6ff; --success:#3fb950; --danger:#f85149; --btn-bg:#21262d; --btn-border:rgba(240,246,252,0.1); --btn-hover:#30363d; } }
-:root.dark { --bg:#0d1117; --bg2:#161b22; --border:#30363d; --text:#e6edf3; --text2:#8b949e; --accent:#58a6ff; --success:#3fb950; --danger:#f85149; --btn-bg:#21262d; --btn-border:rgba(240,246,252,0.1); --btn-hover:#30363d; }
-body { background: var(--bg); color: var(--text); }
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DB Viewer</title>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+    <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif;
+        font-size: 14px; height: 100vh; overflow: hidden;
+    }
+    :root {
+        --sp-1: 4px;
+        --sp-2: 8px;
+        --sp-3: 12px;
+        --sp-4: 16px;
+        --sp-5: 24px;
+        --sp-6: 32px;
+        --bg:             #ffffff;
+        --bg2:            #f6f8fa;
+        --bg-overlay:     rgba(27, 31, 36, 0.5);
+        --bg-inset:       #eff2f5;
+        --border:         #d0d7de;
+        --border-muted:   #d8dee4;
+        --text:           #1f2328;
+        --text2:          #656d76;
+        --text3:          #8c959f;
+        --accent:         #0969da;
+        --accent-subtle:  rgba(9, 105, 218, 0.1);
+        --success:        #1a7f37;
+        --success-subtle: rgba(26, 127, 55, 0.1);
+        --danger:         #d1242f;
+        --danger-subtle:  rgba(209, 36, 47, 0.1);
+        --warning:        #9a6700;
+        --btn-bg:         #f6f8fa;
+        --btn-border:     rgba(27, 31, 36, 0.15);
+        --btn-hover:      #f3f4f6;
+        --btn-active:     #ebecef;
+        --radius:         6px;
+        --radius-lg:      12px;
+        --shadow-sm:      0 1px 0 rgba(27, 31, 36, 0.04);
+        --shadow-md:      0 3px 6px rgba(140, 149, 159, 0.15);
+        --shadow-lg:      0 8px 24px rgba(140, 149, 159, 0.2);
+        --shadow-overlay: 0 16px 32px rgba(0, 0, 0, 0.24);
+        --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+    }
+    @media (prefers-color-scheme: dark) {
+        :root:not(.light) {
+            --bg:             #0d1117;
+            --bg2:            #161b22;
+            --bg-overlay:     rgba(0, 0, 0, 0.7);
+            --bg-inset:       #010409;
+            --border:         #30363d;
+            --border-muted:   #21262d;
+            --text:           #e6edf3;
+            --text2:          #8b949e;
+            --text3:          #6e7681;
+            --accent:         #58a6ff;
+            --accent-subtle:  rgba(88, 166, 255, 0.1);
+            --success:        #3fb950;
+            --success-subtle: rgba(63, 185, 80, 0.1);
+            --danger:         #f85149;
+            --danger-subtle:  rgba(248, 81, 73, 0.1);
+            --warning:        #d29922;
+            --btn-bg:         #21262d;
+            --btn-border:     rgba(240, 246, 252, 0.1);
+            --btn-hover:      #30363d;
+            --btn-active:     #282e37;
+            --shadow-sm:      0 1px 0 rgba(0, 0, 0, 0.1);
+            --shadow-md:      0 3px 6px rgba(0, 0, 0, 0.3);
+            --shadow-lg:      0 8px 24px rgba(0, 0, 0, 0.4);
+            --shadow-overlay: 0 16px 32px rgba(0, 0, 0, 0.6);
+        }
+    }
+    :root.dark {
+        --bg:             #0d1117;
+        --bg2:            #161b22;
+        --bg-overlay:     rgba(0, 0, 0, 0.7);
+        --bg-inset:       #010409;
+        --border:         #30363d;
+        --border-muted:   #21262d;
+        --text:           #e6edf3;
+        --text2:          #8b949e;
+        --text3:          #6e7681;
+        --accent:         #58a6ff;
+        --accent-subtle:  rgba(88, 166, 255, 0.1);
+        --success:        #3fb950;
+        --success-subtle: rgba(63, 185, 80, 0.1);
+        --danger:         #f85149;
+        --danger-subtle:  rgba(248, 81, 73, 0.1);
+        --warning:        #d29922;
+        --btn-bg:         #21262d;
+        --btn-border:     rgba(240, 246, 252, 0.1);
+        --btn-hover:      #30363d;
+        --btn-active:     #282e37;
+        --shadow-sm:      0 1px 0 rgba(0, 0, 0, 0.1);
+        --shadow-md:      0 3px 6px rgba(0, 0, 0, 0.3);
+        --shadow-lg:      0 8px 24px rgba(0, 0, 0, 0.4);
+        --shadow-overlay: 0 16px 32px rgba(0, 0, 0, 0.6);
+    }
+    body { background: var(--bg); color: var(--text); }
 
-/* ── Layout ── */
-.app-layout { display: flex; height: 100vh; }
-.sidebar {
-  width: 25%; min-width: 200px; max-width: 320px;
-  background: var(--bg2); border-right: 1px solid var(--border);
-  display: flex; flex-direction: column; padding: 10px; gap: 8px; overflow: hidden;
-}
-.content { flex: 1; display: flex; min-width: 0; }
-.tab-switcher {
-  display: flex; flex-direction: column; align-items: center;
-  border-right: 1px solid var(--border); background: var(--bg2);
-  padding: 12px 2px; gap: 4px; min-width: 32px;
-}
-.tab-switcher span {
-  writing-mode: vertical-rl; transform: rotate(180deg);
-  cursor: pointer; padding: 8px 4px; border-radius: var(--radius);
-  font-size: 12px; color: var(--text2); white-space: nowrap;
-  transition: color .15s, background .15s; user-select: none;
-}
-.tab-switcher span:hover { color: var(--text); background: var(--btn-hover); }
-.tab-switcher span.active { color: var(--accent); font-weight: 600; border-left: 2px solid var(--accent); }
-.tab-content { flex: 1; display: flex; flex-direction: column; overflow: hidden; padding: 10px; gap: 8px; }
+    /* ── Octicon base ── */
+    .octicon {
+        display: inline-block;
+        overflow: visible;
+        vertical-align: text-bottom;
+        fill: currentColor;
+        flex-shrink: 0;
+    }
 
-/* ── Toolbar ── */
-.toolbar { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; }
-.toolbar input[type=text], .toolbar textarea {
-  border: 1px solid var(--border); border-radius: var(--radius);
-  padding: 4px 10px; font-size: 13px; font-family: var(--mono); outline: none;
-  background: var(--bg);
-}
-.toolbar input[type=text]:focus, .toolbar textarea:focus {
-  border-color: var(--accent); box-shadow: 0 0 0 3px rgba(9,105,218,0.2);
-}
-.toolbar input.wide { flex: 1; min-width: 180px; }
-.toolbar label { font-size: 12px; color: var(--text2); display:flex; gap:4px; align-items:center; }
+    /* ── Global form elements ── */
+    input, select, textarea {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif;
+        font-size: 14px;
+        color: var(--text);
+        background: var(--bg);
+    }
+    input[type=text], input[type=password], input[type=number] {
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 5px 10px;
+        outline: none;
+        line-height: 1.4;
+    }
+    input[type=text]:focus, input[type=password]:focus, input[type=number]:focus {
+        border-color: var(--accent);
+        box-shadow: 0 0 0 3px var(--accent-subtle);
+    }
+    input.wide, textarea.wide { width: 100%; }
 
-/* ── Buttons ── */
-button {
-  border: 1px solid var(--btn-border); border-radius: var(--radius);
-  padding: 4px 12px; font-size: 13px; cursor: pointer;
-  background: var(--btn-bg); color: var(--text);
-  transition: background .12s; white-space: nowrap;
-}
-button:hover { background: var(--btn-hover); }
-button.primary { background: var(--success); color: var(--bg); border-color: #1a7f3780; }
-button.primary:hover { filter: brightness(0.9); }
-button.danger { color: var(--danger); border-color: var(--danger); }
-button.danger:hover { background: color-mix(in srgb, var(--danger) 12%, var(--bg)); }
-button:disabled { opacity: .5; cursor: default; }
+    /* ── Layout ── */
+    .app-layout { display: flex; height: 100vh; }
+    .sidebar {
+        width: 25%; min-width: 200px; max-width: 320px;
+        background: var(--bg2); border-right: 1px solid var(--border);
+        display: flex; flex-direction: column; padding: var(--sp-2); gap: var(--sp-2); overflow: hidden;
+    }
+    .content { flex: 1; display: flex; min-width: 0; }
+    .tab-switcher {
+        display: flex; flex-direction: column; align-items: center;
+        border-right: 1px solid var(--border); background: var(--bg2);
+        padding: var(--sp-3) 2px; gap: var(--sp-1); min-width: 32px;
+    }
+    .tab-switcher span {
+        writing-mode: vertical-rl; transform: rotate(180deg);
+        cursor: pointer; padding: var(--sp-2) var(--sp-1); border-radius: var(--radius);
+        font-size: 12px; color: var(--text2); white-space: nowrap;
+        transition: color .15s, background .15s; user-select: none;
+    }
+    .tab-switcher span:hover { color: var(--text); background: var(--btn-hover); }
+    .tab-switcher span.active { color: var(--accent); font-weight: 600; border-left: 2px solid var(--accent); }
+    .tab-content { flex: 1; display: flex; flex-direction: column; overflow: hidden; padding: var(--sp-2); gap: var(--sp-2); }
 
-/* ── Select ── */
-select {
-  border: 1px solid var(--border); border-radius: var(--radius);
-  padding: 4px 8px; font-size: 13px; background: var(--bg); color: var(--text); outline: none;
-}
-select:focus { border-color: var(--accent); }
-select[multiple] { flex: 1; min-height: 200px; font-family: var(--mono); font-size: 12px; }
+    /* ── Toolbar ── */
+    .toolbar { display: flex; flex-wrap: wrap; gap: var(--sp-1); align-items: center; }
+    .toolbar input[type=text], .toolbar textarea {
+        font-family: var(--mono);
+        font-size: 13px;
+    }
+    .toolbar input.wide { flex: 1; min-width: 180px; }
+    .toolbar label { font-size: 12px; color: var(--text2); display: flex; gap: var(--sp-1); align-items: center; }
 
-/* ── Sortable table headers ── */
-.response-pane table th.sortable { cursor:pointer; user-select:none; }
-.response-pane table th.sortable:hover { background:var(--btn-hover); }
-.sort-arrow { font-size:10px; margin-left:3px; opacity:.5; }
-th.sort-active .sort-arrow { opacity:1; }
+    /* ── Buttons ── */
+    button {
+        display: inline-flex; align-items: center; gap: var(--sp-1);
+        border: 1px solid var(--btn-border); border-radius: var(--radius);
+        padding: 5px 12px; font-size: 13px; font-weight: 500; cursor: pointer;
+        background: var(--btn-bg); color: var(--text);
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif;
+        transition: background .12s; white-space: nowrap; line-height: 1;
+    }
+    button:hover { background: var(--btn-hover); }
+    button:active { background: var(--btn-active); }
+    button.primary { background: var(--success); color: #fff; border-color: transparent; }
+    button.primary:hover { filter: brightness(0.9); }
+    button.danger { color: var(--danger); border-color: var(--danger); }
+    button.danger:hover { background: var(--danger-subtle); }
+    button:disabled { opacity: .5; cursor: default; }
 
-/* ── Response pane ── */
-.response-pane {
-  flex: 1; overflow: auto; font-family: var(--mono); font-size: 12px;
-  border: 1px solid var(--border); border-radius: var(--radius);
-  padding: 10px; background: var(--bg); color: var(--text);
-  white-space: pre-wrap; position: relative;
-}
-.response-pane table {
-  border-collapse: collapse; font-size: 12px; margin-bottom: 12px;
-}
-.response-pane table th, .response-pane table td {
-  border: 1px solid var(--border); padding: 5px 10px; font-family: var(--mono);
-  color: var(--text);
-}
-.response-pane table thead th { background: var(--bg2); font-weight: 600; color: var(--text); }
-.response-pane table tbody tr:nth-child(odd)  td, .response-pane table tbody tr:nth-child(odd)  th { background: var(--bg); }
-.response-pane table tbody tr:nth-child(even) td, .response-pane table tbody tr:nth-child(even) th { background: var(--bg2); }
-.response-pane table tbody tr:hover td { background: color-mix(in srgb, var(--accent) 8%, var(--bg)); }
-.response-pane h2 { font-size: 13px; color: var(--text2); margin: 6px 0 4px; }
-.snippets-textarea {
-  width: 100%; height: 100%; resize: none; border: none; outline: none;
-  font-family: var(--mono); font-size: 12px; background: transparent; color: var(--text);
-}
+    /* ── Select ── */
+    select {
+        border: 1px solid var(--border); border-radius: var(--radius);
+        padding: 5px var(--sp-2); background: var(--bg); color: var(--text); outline: none;
+    }
+    select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-subtle); }
+    select[multiple] { flex: 1; min-height: 200px; font-family: var(--mono); font-size: 12px; }
 
-/* ── HTML response table — replaces HTML presentation attrs (border=1 etc.) ── */
-.result-table {
-  border-collapse: collapse; font-size: 12px; margin-bottom: 12px; width: auto;
-  color: var(--text); border-color: var(--border);
-}
-.result-table th, .result-table td {
-  border: 1px solid var(--border); padding: 5px 10px; font-family: var(--mono);
-  color: var(--text); background: var(--bg);
-}
-.result-table thead th {
-  background: var(--bg2); font-weight: 600; color: var(--text);
-  position: sticky; top: 0; z-index: 1;
-}
-.result-table tbody tr:nth-child(odd)  td { background: var(--bg); }
-.result-table tbody tr:nth-child(even) td { background: var(--bg2); }
-.result-table tbody tr:hover td { background: color-mix(in srgb, var(--accent) 8%, var(--bg)); }
+    /* ── Sortable table headers ── */
+    .response-pane table th.sortable { cursor: pointer; user-select: none; }
+    .response-pane table th.sortable:hover { background: var(--btn-hover); }
+    .sort-arrow { margin-left: 3px; opacity: .5; display: inline-flex; vertical-align: text-bottom; }
+    th.sort-active .sort-arrow { opacity: 1; }
 
-/* ── Query label (shown above result tables) ── */
-.query-label {
-  white-space: pre-wrap; margin-bottom: 8px; padding: 6px 8px;
-  background: var(--bg2); border-left: 3px solid var(--accent);
-  border-radius: 0 var(--radius) var(--radius) 0;
-  font-family: var(--mono); font-size: 11px; color: var(--text2);
-}
+    /* ── Response pane ── */
+    .response-pane {
+        flex: 1; overflow: auto; font-family: var(--mono); font-size: 12px;
+        border: 1px solid var(--border); border-radius: var(--radius);
+        padding: var(--sp-2); background: var(--bg); color: var(--text);
+        white-space: pre-wrap; position: relative;
+    }
+    .response-pane table {
+        border-collapse: collapse; font-size: 12px; margin-bottom: var(--sp-3);
+    }
+    .response-pane table th, .response-pane table td {
+        border: 1px solid var(--border); padding: 5px 10px; font-family: var(--mono);
+        color: var(--text);
+    }
+    .response-pane table thead th { background: var(--bg2); font-weight: 600; color: var(--text); }
+    .response-pane table tbody tr:nth-child(odd)  td,
+    .response-pane table tbody tr:nth-child(odd)  th { background: var(--bg); }
+    .response-pane table tbody tr:nth-child(even) td,
+    .response-pane table tbody tr:nth-child(even) th { background: var(--bg2); }
+    .response-pane table tbody tr:hover td { background: var(--accent-subtle); }
+    .response-pane h2 { font-size: 13px; color: var(--text2); margin: 6px 0 4px; }
+    .snippets-textarea {
+        width: 100%; height: 100%; resize: none; border: none; outline: none;
+        font-family: var(--mono); font-size: 12px; background: transparent; color: var(--text);
+        padding: 0;
+    }
 
-/* ── Query / import error spans ── */
-.query-error {
-  color: var(--danger); display: block; margin: 2px 0;
-  font-family: var(--mono); font-size: 12px;
-}
+    /* ── HTML response table ── */
+    .result-table {
+        border-collapse: collapse; font-size: 12px; margin-bottom: var(--sp-3); width: auto;
+        color: var(--text); border-color: var(--border);
+    }
+    .result-table th, .result-table td {
+        border: 1px solid var(--border); padding: 5px 10px; font-family: var(--mono);
+        color: var(--text); background: var(--bg);
+    }
+    .result-table thead th {
+        background: var(--bg2); font-weight: 600; color: var(--text);
+        position: sticky; top: 0; z-index: 1;
+    }
+    .result-table tbody tr:nth-child(odd)  td { background: var(--bg); }
+    .result-table tbody tr:nth-child(even) td { background: var(--bg2); }
+    .result-table tbody tr:hover td { background: var(--accent-subtle); }
 
-/* ── Login ── */
-.login-overlay {
-  position: fixed; inset: 0; background: var(--bg2);
-  display: flex; align-items: center; justify-content: center; z-index: 999;
-}
-.login-card {
-  background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
-  padding: 32px; width: 340px; display: flex; flex-direction: column; gap: 14px;
-  box-shadow: 0 4px 24px rgba(0,0,0,.3);
-}
-.login-card h2 { font-size: 20px; color: var(--text); font-weight: 600; }
-.login-card input {
-  width: 100%; border: 1px solid var(--border); border-radius: var(--radius);
-  padding: 7px 12px; font-size: 14px; outline: none;
-}
-.login-card input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(9,105,218,0.2); }
-.login-card button { width: 100%; padding: 8px; font-size: 14px; }
-.login-error { color: var(--danger); font-size: 12px; }
+    /* ── Query label ── */
+    .query-label {
+        white-space: pre-wrap; margin-bottom: var(--sp-2); padding: 6px var(--sp-2);
+        background: var(--bg2); border-left: 3px solid var(--accent);
+        border-radius: 0 var(--radius) var(--radius) 0;
+        font-family: var(--mono); font-size: 11px; color: var(--text2);
+    }
 
-/* ── Autocomplete dropdown ── */
-.autocomplete-wrap { position: relative; flex: 1; min-width: 160px; }
-.autocomplete-list {
-  position: absolute; top: 100%; left: 0; right: 0; z-index: 200;
-  background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius);
-  box-shadow: 0 4px 12px rgba(0,0,0,.1); max-height: 180px; overflow-y: auto;
-}
-.autocomplete-list li {
-  padding: 5px 10px; cursor: pointer; font-family: var(--mono); font-size: 12px; list-style: none;
-}
-.autocomplete-list li:hover, .autocomplete-list li.active { background: var(--bg2); }
+    /* ── Query / import error spans ── */
+    .query-error {
+        color: var(--danger); display: block; margin: 2px 0;
+        font-family: var(--mono); font-size: 12px;
+    }
 
-/* ── Inline cell editor ── */
-#inline-editor {
-  position: fixed; z-index: 500; display: none;
-  border: 2px solid var(--accent); border-radius: 3px; padding: 2px 6px;
-  font-family: var(--mono); font-size: 12px; background: var(--bg);
-  box-shadow: 0 2px 8px rgba(9,105,218,0.25);
-}
+    /* ── Alert component ── */
+    .alert {
+        font-size: 12px; padding: 6px var(--sp-2); border-radius: var(--radius);
+        border: 1px solid; display: flex; align-items: center; gap: var(--sp-1);
+        white-space: pre-wrap;
+    }
+    .alert-success { color: var(--success); border-color: var(--success); background: var(--success-subtle); }
+    .alert-danger  { color: var(--danger);  border-color: var(--danger);  background: var(--danger-subtle); }
 
-/* ── History panel ── */
-.history-panel { width: 40%; border-left: 1px solid var(--border); padding: 8px; overflow-y: auto; }
-.history-item {
-  padding: 5px 8px; border: 1px solid var(--border); border-radius: var(--radius);
-  margin-bottom: 5px; cursor: pointer; font-family: var(--mono); font-size: 11px;
-  display: flex; align-items: flex-start; gap: 6px;
-}
-.history-item:hover { background: var(--bg2); }
-.history-item .del { color: var(--danger); cursor: pointer; margin-left: auto; flex-shrink:0; }
+    /* ── Login ── */
+    .login-overlay {
+        position: fixed; inset: 0; background: var(--bg2);
+        display: flex; align-items: center; justify-content: center; z-index: 999;
+    }
+    .login-card {
+        background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-lg);
+        padding: var(--sp-6); width: 340px; display: flex; flex-direction: column; gap: 14px;
+        box-shadow: var(--shadow-overlay);
+    }
+    .login-card h2 {
+        font-size: 20px; color: var(--text); font-weight: 600; line-height: 1.3;
+        display: flex; align-items: center; gap: var(--sp-2);
+    }
+    .login-card button { width: 100%; padding: var(--sp-2); font-size: 14px; justify-content: center; }
+    .login-error { color: var(--danger); font-size: 12px; }
 
-/* ── Misc ── */
-.section-header { font-weight: 600; font-size: 12px; color: var(--text2); margin: 4px 0 2px; }
-.row-gap { display: flex; flex-direction: column; gap: 5px; }
-hr.sep { border: none; border-top: 1px solid var(--border); margin: 4px 0; }
-.badge {
-  font-size: 11px; background: var(--bg2); border: 1px solid var(--border);
-  border-radius: 10px; padding: 1px 6px; color: var(--text2);
-}
-</style>
+    /* ── Autocomplete dropdown ── */
+    .autocomplete-wrap { position: relative; flex: 1; min-width: 160px; }
+    .autocomplete-list {
+        position: absolute; top: 100%; left: 0; right: 0; z-index: 200;
+        background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius);
+        box-shadow: var(--shadow-md); max-height: 180px; overflow-y: auto;
+    }
+    .autocomplete-list li {
+        padding: 5px 10px; cursor: pointer; font-family: var(--mono); font-size: 12px; list-style: none;
+    }
+    .autocomplete-list li:hover, .autocomplete-list li.active { background: var(--bg2); }
+
+    /* ── Inline cell editor ── */
+    #inline-editor {
+        position: fixed; z-index: 500; display: none;
+        border: 2px solid var(--accent); border-radius: 3px; padding: 2px 6px;
+        font-family: var(--mono); font-size: 12px; background: var(--bg);
+        box-shadow: 0 2px 8px var(--accent-subtle);
+    }
+
+    /* ── History panel ── */
+    .history-panel { width: 40%; border-left: 1px solid var(--border); padding: var(--sp-2); overflow-y: auto; }
+    .history-item {
+        padding: 5px var(--sp-2); border: 1px solid var(--border); border-radius: var(--radius);
+        margin-bottom: 5px; cursor: pointer; font-family: var(--mono); font-size: 11px;
+        display: flex; align-items: flex-start; gap: 6px;
+    }
+    .history-item:hover { background: var(--bg2); }
+    .history-item .del {
+        color: var(--danger); cursor: pointer; margin-left: auto; flex-shrink: 0;
+        display: flex; align-items: center;
+    }
+
+    /* ── Misc ── */
+    .section-header { font-weight: 600; font-size: 12px; color: var(--text2); margin: 4px 0 2px; }
+    .row-gap { display: flex; flex-direction: column; gap: 5px; }
+    hr.sep { border: none; border-top: 1px solid var(--border); margin: 4px 0; }
+    .badge {
+        font-size: 11px; background: var(--bg2); border: 1px solid var(--border);
+        border-radius: 10px; padding: 1px 6px; color: var(--text2);
+    }
+    </style>
 </head>
 <body>
 <div id="app">
 
-  <!-- ── Login overlay ── -->
-  <div class="login-overlay" v-if="!isAuthenticated">
-    <div class="login-card">
-      <h2>🗄 DB Viewer</h2>
-      <input type="text" v-model="loginForm.username" placeholder="Username" @keyup.enter="login" autofocus />
-      <input type="password" v-model="loginForm.password" placeholder="Password" @keyup.enter="login" />
-      <div class="login-error" v-if="loginError">{{ loginError }}</div>
-      <button class="primary" @click="login" :disabled="loading.login">
-        {{ loading.login ? 'Signing in…' : 'Sign in' }}
-      </button>
+    <!-- ── Login overlay ── -->
+    <div class="login-overlay" v-if="!isAuthenticated">
+        <div class="login-card">
+            <h2>
+                <svg class="octicon" viewBox="0 0 16 16" width="20" height="20">
+                    <path d="M1 3.5c0-.626.292-1.165.7-1.59.406-.422.956-.767 1.579-1.041C4.525.32 6.195 0 8 0c1.805 0 3.475.32 4.722.869.622.274 1.172.62 1.578 1.04.408.426.7.965.7 1.591v9c0 .626-.292 1.165-.7 1.59-.406.422-.956.767-1.579 1.041C11.476 15.68 9.806 16 8 16c-1.805 0-3.475-.32-4.721-.869-.623-.274-1.173-.62-1.579-1.04-.408-.426-.7-.965-.7-1.591Zm1.5 0c0 .133.058.318.282.551.227.237.591.483 1.101.707C4.898 5.205 6.353 5.5 8 5.5c1.646 0 3.101-.295 4.118-.742.508-.224.873-.471 1.1-.708.224-.232.282-.417.282-.55 0-.133-.058-.318-.282-.551-.227-.237-.591-.483-1.101-.707C11.102 1.795 9.647 1.5 8 1.5c-1.646 0-3.101.295-4.118.742-.508.224-.873.471-1.1.708-.224.232-.282.417-.282.55Zm0 4.5c0 .133.058.318.282.551.227.237.591.483 1.101.707C4.898 9.705 6.353 10 8 10c1.646 0 3.101-.295 4.118-.742.508-.224.873-.471 1.1-.708.224-.232.282-.417.282-.55V5.724c-.241.15-.503.286-.778.407C11.475 6.68 9.805 7 8 7c-1.805 0-3.475-.32-4.721-.869a6.15 6.15 0 0 1-.779-.407Zm0 2.225V12.5c0 .133.058.318.282.55.227.237.592.484 1.1.708 1.016.447 2.471.742 4.118.742 1.647 0 3.102-.295 4.117-.742.51-.224.874-.47 1.101-.707.224-.233.282-.418.282-.551v-2.275c-.241.15-.503.285-.778.406-1.247.549-2.917.869-4.722.869-1.805 0-3.475-.32-4.721-.869a6.327 6.327 0 0 1-.779-.406Z"></path>
+                </svg>
+                DB Viewer
+            </h2>
+            <input type="text" v-model="loginForm.username" placeholder="Username" @keyup.enter="login" autofocus />
+            <input type="password" v-model="loginForm.password" placeholder="Password" @keyup.enter="login" />
+            <div class="login-error" v-if="loginError">{{ loginError }}</div>
+            <button class="primary" @click="login" :disabled="loading.login">
+                {{ loading.login ? 'Signing in…' : 'Sign in' }}
+            </button>
+        </div>
     </div>
-  </div>
 
-  <!-- ── Main app ── -->
-  <div class="app-layout" v-else>
+    <!-- ── Main app ── -->
+    <div class="app-layout" v-else>
 
-    <!-- Left sidebar -->
-    <aside class="sidebar">
-      <div class="section-header">Connection</div>
-      <select v-model="selectedConnection" @change="onConnectionChanged" style="width:100%">
-        <option value="">— select —</option>
-        <option v-for="(c, i) in connections" :key="i" :value="i">{{ c }}</option>
-      </select>
-      <button @click="refreshConnection" style="width:100%">⟳ Refresh</button>
-      <hr class="sep">
-      <div class="section-header">Tables</div>
-      <input type="text" v-model="tableFilterKeyword" placeholder="Filter tables…" style="width:100%">
-      <select multiple v-model="selectedTables" style="flex:1">
-        <option v-for="t in filteredTables" :key="t.table" :value="t.table">{{ t.title }}</option>
-      </select>
-      <div style="display:flex;justify-content:space-between">
-        <span class="badge">{{ selectedTables.length }} selected</span>
-        <button @click="selectedTables=[]" style="padding:1px 6px;font-size:11px">Clear</button>
-      </div>
-      <hr class="sep">
-      <div style="display:flex;gap:6px">
-        <button @click="toggleTheme" style="flex:1;font-size:12px" :title="isDark?'Switch to light mode':'Switch to dark mode'">
-          {{ isDark ? '☀ Light' : '🌙 Dark' }}
-        </button>
-        <button @click="logout" style="flex:1;color:var(--danger);font-size:12px">Sign out</button>
-      </div>
-    </aside>
-
-    <!-- Right panel -->
-    <main class="content">
-      <!-- Tab switcher -->
-      <nav class="tab-switcher">
-        <span v-for="tab in tabs" :key="tab.id"
-              @click="activeView = tab.id"
-              :class="{active: activeView === tab.id}">{{ tab.label }}</span>
-      </nav>
-
-      <!-- Tab content -->
-      <div class="tab-content">
-
-        <!-- ── VIEWER tab ── -->
-        <template v-if="activeView === 'viewer'">
-          <div class="toolbar">
-            <button @click="showConcept">Concept</button>
-            <button @click="showStructure">Structure</button>
-            <button @click="describe">Describe</button>
-            <button @click="showData()">Data</button>
-            <button @click="showEditorForm=!showEditorForm">New</button>
-            <input type="text" v-model="dataLimit" placeholder="Limit" style="width:60px" title="Rows per page">
-            <button @click="prevPage" :disabled="dataOffset===0" title="Previous page">◀</button>
-            <span style="font-size:11px;color:var(--text2)">{{ dataOffset }}+</span>
-            <button @click="nextPage" title="Next page">▶</button>
-            <button @click="showIndexes">Indexes</button>
-            <button @click="dropIndexes">Drop indexes</button>
-            <button @click="toString">To string</button>
-            <button @click="snippets">Snippets</button>
-            <button @click="vue">Vue</button>
-          </div>
-          <div class="toolbar">
-            <div class="autocomplete-wrap">
-              <input type="text" class="wide" v-model="column" placeholder="Column name…"
-                     @input="handleColumnInput" @focus="handleColumnFocus" @blur="hideColumnSuggestions">
-              <ul class="autocomplete-list" v-if="showColumnSuggestions && filteredColumnNames.length">
-                <li v-for="n in filteredColumnNames" :key="n"
-                    @mousedown.prevent="selectColumnName(n)">{{ n }}</li>
-              </ul>
+        <!-- Left sidebar -->
+        <aside class="sidebar">
+            <div class="section-header">Connection</div>
+            <select v-model="selectedConnection" @change="onConnectionChanged" style="width:100%">
+                <option value="">— select —</option>
+                <option v-for="(c, i) in connections" :key="i" :value="i">{{ c }}</option>
+            </select>
+            <button @click="refreshConnection" style="width:100%">
+                <svg class="octicon" viewBox="0 0 16 16" width="16" height="16">
+                    <path d="M1.705 8.005a.75.75 0 0 1 .834.656 5.5 5.5 0 0 0 9.592 2.97l-1.204-1.204a.25.25 0 0 1 .177-.427h3.646a.25.25 0 0 1 .25.25v3.646a.25.25 0 0 1-.427.177l-1.38-1.38A7.002 7.002 0 0 1 1.05 8.84a.75.75 0 0 1 .656-.834ZM8 2.5a5.487 5.487 0 0 0-4.131 1.869l1.204 1.204A.25.25 0 0 1 4.896 6H1.25A.25.25 0 0 1 1 5.75V2.104a.25.25 0 0 1 .427-.177l1.38 1.38A7.002 7.002 0 0 1 14.95 7.16a.75.75 0 0 1-1.49.178A5.5 5.5 0 0 0 8 2.5Z"></path>
+                </svg>
+                Refresh
+            </button>
+            <hr class="sep">
+            <div class="section-header">Tables</div>
+            <input type="text" v-model="tableFilterKeyword" placeholder="Filter tables…" style="width:100%">
+            <select multiple v-model="selectedTables" style="flex:1">
+                <option v-for="t in filteredTables" :key="t.table" :value="t.table">{{ t.title }}</option>
+            </select>
+            <div style="display:flex;justify-content:space-between">
+                <span class="badge">{{ selectedTables.length }} selected</span>
+                <button @click="selectedTables=[]" style="padding:1px 6px;font-size:11px">Clear</button>
             </div>
-            <button @click="columnSearch">Column Search</button>
-            <div class="autocomplete-wrap" style="flex:2">
-              <input type="text" class="wide" v-model="queryString" placeholder="SQL query…"
-                     @input="handleQueryInput" @keyup.enter="executeQuery()"
-                     @keyup.up.prevent="handleQueryArrowUp" @keyup.down.prevent="handleQueryArrowDown"
-                     @keyup.esc="showQuerySuggestions=false">
-              <ul class="autocomplete-list" v-if="showQuerySuggestions && querySuggestions.length">
-                <li v-for="(s,i) in querySuggestions" :key="s"
-                    :class="{active: i===selectedQuerySuggestionIndex}"
-                    @mousedown.prevent="selectQuerySuggestion(s)">{{ s }}</li>
-              </ul>
-            </div>
-            <button @click="executeQuery()" :disabled="loading.query">Run</button>
-            <button @click="executeQuery('explain')">Explain</button>
-            <button @click="executeQuery('profiling')">Profile</button>
-            <button @click="executeQuery('lastRow')">L</button>
-            <button @click="executeQuery('lastUpdate')">LU</button>
-            <button @click="showQueryHistory=!showQueryHistory" :class="{active:showQueryHistory}">▾</button>
-          </div>
-          <div class="toolbar" v-if="hasAi">
-            <input type="text" class="wide" v-model="ai.message"
-                   placeholder="Ask AI…" @keyup.enter="sendChatMessage">
-            <button @click="sendChatMessage" :disabled="loading.ai">Send</button>
-          </div>
-          <!-- Editor form -->
-          <div v-if="showEditorForm" class="toolbar row-gap" style="border:1px solid var(--border);padding:8px;border-radius:6px">
-            <div class="section-header">Insert / Update row in: {{ selectedTables[0] }}</div>
-            <div v-for="col in editorColumns" :key="col" style="display:flex;gap:6px;align-items:center">
-              <label style="width:140px;font-size:12px">{{ col }}</label>
-              <input type="text" class="wide" v-model="editorData[col]" :placeholder="col">
-            </div>
+            <hr class="sep">
             <div style="display:flex;gap:6px">
-              <button class="primary" @click="insertTableRow">{{ editorData.ID ? 'Update' : 'Insert' }}</button>
-              <button @click="showEditorForm=false">Cancel</button>
-            </div>
-          </div>
-          <div style="display:flex;flex:1;min-height:0;gap:8px">
-            <div class="response-pane" ref="responsePane"
-                 v-if="!isSnippetResponse" v-html="response"
-                 @click="onResponsePaneClick"></div>
-            <textarea class="response-pane snippets-textarea" v-else v-model="response"></textarea>
-            <div class="history-panel" v-if="showQueryHistory" style="max-width:300px">
-              <div class="section-header">Query History</div>
-              <div class="history-item" v-for="(q,i) in queryHistory" :key="i">
-                <span @click="onClickQueryHistory(q)" style="flex:1;word-break:break-all">{{ q }}</span>
-                <span class="del" @click="queryHistory.splice(i,1);saveQueryHistory()">✕</span>
-              </div>
-            </div>
-          </div>
-        </template>
-
-        <!-- ── OPERATIONS tab ── -->
-        <template v-if="activeView === 'operations'">
-          <div class="toolbar">
-            <button @click="showConcept">Concept</button>
-            <button @click="showStructure">Structure</button>
-            <button @click="showIndexes">Indexes</button>
-            <button @click="showSizes">Sizes</button>
-            <button @click="showData()">Data</button>
-          </div>
-          <div class="toolbar">
-            <input type="text" class="wide" v-model="queryString" placeholder="SQL query…" @keyup.enter="executeQuery()">
-            <button @click="executeQuery()" :disabled="loading.query">Run</button>
-            <label><input type="checkbox" v-model="dryRun.tableOperations"> Dry run</label>
-            <button class="danger" @click="truncateTables">Truncate</button>
-            <button class="danger" @click="dropTables">Drop</button>
-            <button @click="insertFakeData">Fake data</button>
-            <input type="text" v-model="confirmation.tableOperations" placeholder="Confirmation" style="width:130px">
-          </div>
-          <div class="toolbar">
-            <input type="text" v-model="newTableName" placeholder="New name" style="width:140px">
-            <button @click="renameTable" :disabled="selectedTables.length!==1">Rename</button>
-            <button @click="cloneTable" :disabled="selectedTables.length!==1">Clone</button>
-            <input type="text" v-model="confirmation.renameTable" placeholder="Confirmation" style="width:130px">
-          </div>
-          <div class="toolbar">
-            <div class="autocomplete-wrap" style="width:160px">
-              <input type="text" class="wide" v-model="column" placeholder="Column name…"
-                     @input="handleColumnInput" @focus="handleColumnFocus" @blur="hideColumnSuggestions">
-              <ul class="autocomplete-list" v-if="showColumnSuggestions && filteredColumnNames.length">
-                <li v-for="n in filteredColumnNames" :key="n" @mousedown.prevent="selectColumnName(n)">{{ n }}</li>
-              </ul>
-            </div>
-            <button @click="columnSearch">Search</button>
-            <input type="text" v-model="newColumnName" placeholder="New name" style="width:120px">
-            <input type="text" v-model="newColumnType" placeholder="New type" style="width:140px">
-            <label><input type="checkbox" v-model="dryRun.columnOperations"> Dry run</label>
-            <button @click="alterColumn">Alter</button>
-            <button class="danger" @click="dropColumn">Drop col</button>
-            <button @click="insertAfterColumn">Insert after</button>
-            <input type="text" v-model="confirmation.columnOperations" placeholder="Confirmation" style="width:130px">
-          </div>
-          <div class="toolbar" style="background:var(--bg2);padding:6px;border-radius:6px;border:1px solid var(--border)">
-            <select v-model="queryBuilder.operation" style="width:140px">
-              <option value="select">SELECT * FROM</option>
-              <option value="update">UPDATE</option>
-              <option value="delete">DELETE FROM</option>
-            </select>
-            <span style="font-family:var(--mono);font-size:12px">{{ selectedTables[0] || '…' }}</span>
-            <template v-if="queryBuilder.operation==='update'">
-              SET
-              <input type="text" v-model="queryBuilder.setColumn" placeholder="col" style="width:100px">
-              =
-              <input type="text" v-model="queryBuilder.setValue" placeholder="val" style="width:100px">
-            </template>
-            WHERE
-            <input type="text" v-model="queryBuilder.whereColumn" placeholder="col" style="width:100px">
-            =
-            <input type="text" v-model="queryBuilder.whereValue" placeholder="val" style="width:100px">
-            <button @click="executeBuilderQuery" :disabled="loading.query">Run</button>
-          </div>
-          <div class="response-pane" v-if="!isSnippetResponse" v-html="response"></div>
-          <textarea class="response-pane snippets-textarea" v-else v-model="response"></textarea>
-        </template>
-
-        <!-- ── DATABASES tab ── -->
-        <template v-if="activeView === 'databases'">
-          <div class="toolbar">
-            <select v-model="selectedPeerConnection" style="width:180px">
-              <option value="">— target —</option>
-              <option v-for="(c, i) in connections" :key="i" :value="i">{{ c }}</option>
-            </select>
-            <button @click="showData(true)">Data</button>
-            <button @click="getPeerPatch">Diff</button>
-            <label><input type="checkbox" v-model="dryRun.databaseOperations"> Dry run</label>
-            <button @click="cloneDatabase">Clone DB</button>
-            <button @click="copyTables">Copy tables</button>
-            <input type="text" v-model="confirmation.databaseOperations" placeholder="Confirmation" style="width:130px">
-          </div>
-          <div class="toolbar">
-            <input type="text" class="wide" v-model="queryString" placeholder="SQL query…" @keyup.enter="executeQuery()">
-            <button @click="executeQuery()" :disabled="loading.query">Run</button>
-          </div>
-          <div class="response-pane" v-html="response"></div>
-        </template>
-
-        <!-- ── EXPORTER tab ── -->
-        <template v-if="activeView === 'exporter'">
-          <div style="display:flex;gap:10px;flex:1;min-height:0">
-            <div class="row-gap" style="flex:1">
-              <textarea v-model="quickReportQueryString" rows="4" placeholder="SQL query…"
-                        style="width:100%;border:1px solid var(--border);border-radius:6px;padding:8px;font-family:var(--mono);font-size:12px;resize:vertical"></textarea>
-              <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
-                <div><label class="section-header">Columns</label><input type="text" v-model="quickReportColumns" class="wide" placeholder="COL1,COL2"></div>
-                <div><label class="section-header">Titles</label><input type="text" v-model="quickReportColumnTitles" class="wide" placeholder="Title 1, Title 2"></div>
-                <div><label class="section-header">Decimal columns</label><input type="text" v-model="quickReportDecimalColumns" class="wide"></div>
-                <div><label class="section-header">Text columns</label><input type="text" v-model="quickReportTextColumns" class="wide"></div>
-                <div><label class="section-header">Summable columns</label><input type="text" v-model="quickReportSummableColumns" class="wide"></div>
-                <div><label class="section-header">Center columns</label><input type="text" v-model="quickReportAlignCenterColumns" class="wide"></div>
-                <div><label class="section-header">Sheet sep. column</label><input type="text" v-model="quickReportSheetSeparationColumn" class="wide"></div>
-                <div><label class="section-header">Column widths</label><input type="text" v-model="quickReportColumnWidths" class="wide" placeholder="15,20,10"></div>
-              </div>
-              <div class="toolbar">
-                <button class="primary" @click="exportQuickReportData" :disabled="loading.export">
-                  {{ loading.export ? 'Exporting…' : '⬇ Export Excel' }}
+                <button @click="toggleTheme" style="flex:1;font-size:12px" :title="isDark ? 'Switch to light mode' : 'Switch to dark mode'">
+                    <svg v-if="isDark" class="octicon" viewBox="0 0 16 16" width="16" height="16">
+                        <path d="M8 12a4 4 0 1 1 0-8 4 4 0 0 1 0 8Zm0-1.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Zm5.657-8.157a.75.75 0 0 1 0 1.061l-1.061 1.06a.749.749 0 0 1-1.275-.326.749.749 0 0 1 .215-.734l1.06-1.06a.75.75 0 0 1 1.06 0Zm-9.193 9.193a.75.75 0 0 1 0 1.06l-1.06 1.061a.75.75 0 1 1-1.061-1.06l1.06-1.061a.75.75 0 0 1 1.061 0ZM8 0a.75.75 0 0 1 .75.75v1.5a.75.75 0 0 1-1.5 0V.75A.75.75 0 0 1 8 0ZM3 8a.75.75 0 0 1-.75.75H.75a.75.75 0 0 1 0-1.5h1.5A.75.75 0 0 1 3 8Zm13 0a.75.75 0 0 1-.75.75h-1.5a.75.75 0 0 1 0-1.5h1.5A.75.75 0 0 1 16 8Zm-8 5a.75.75 0 0 1 .75.75v1.5a.75.75 0 0 1-1.5 0v-1.5A.75.75 0 0 1 8 13Zm3.536-1.464a.75.75 0 0 1 1.06 0l1.061 1.06a.75.75 0 0 1-1.06 1.061l-1.061-1.06a.75.75 0 0 1 0-1.061ZM2.343 2.343a.75.75 0 0 1 1.061 0l1.06 1.061a.751.751 0 0 1-.018 1.042.751.751 0 0 1-1.042.018l-1.06-1.06a.75.75 0 0 1 0-1.06Z"></path>
+                    </svg>
+                    <svg v-else class="octicon" viewBox="0 0 16 16" width="16" height="16">
+                        <path d="M9.598 1.591a.749.749 0 0 1 .785-.175 7.001 7.001 0 1 1-8.967 8.967.75.75 0 0 1 .961-.96 5.5 5.5 0 0 0 7.046-7.046.75.75 0 0 1 .175-.786Zm1.616 1.945a7 7 0 0 1-7.678 7.678 5.499 5.499 0 1 0 7.678-7.678Z"></path>
+                    </svg>
+                    {{ isDark ? 'Light' : 'Dark' }}
                 </button>
-                <button @click="showReportHistory=!showReportHistory">Recent history</button>
-              </div>
+                <button @click="logout" style="flex:1;color:var(--danger);font-size:12px">
+                    <svg class="octicon" viewBox="0 0 16 16" width="16" height="16">
+                        <path d="M2 2.75C2 1.784 2.784 1 3.75 1h2.5a.75.75 0 0 1 0 1.5h-2.5a.25.25 0 0 0-.25.25v10.5c0 .138.112.25.25.25h2.5a.75.75 0 0 1 0 1.5h-2.5A1.75 1.75 0 0 1 2 13.25Zm10.44 4.5-1.97-1.97a.749.749 0 0 1 .326-1.275.749.749 0 0 1 .734.215l3.25 3.25a.75.75 0 0 1 0 1.06l-3.25 3.25a.749.749 0 0 1-1.275-.326.749.749 0 0 1 .215-.734l1.97-1.97H6.75a.75.75 0 0 1 0-1.5Z"></path>
+                    </svg>
+                    Sign out
+                </button>
             </div>
-            <div class="history-panel" v-if="showReportHistory" style="width:35%;min-width:200px">
-              <div class="section-header">Report History</div>
-              <div class="history-item" v-for="(r,i) in reportHistory" :key="i">
-                <span @click="loadReport(r)" style="flex:1">{{ r.query.substring(0,60) }}…</span>
-                <span class="del" @click="reportHistory.splice(i,1);saveReportHistory()">✕</span>
-              </div>
-            </div>
-          </div>
-        </template>
+        </aside>
 
-        <!-- ── IMPORTER tab ── -->
-        <template v-if="activeView === 'importer'">
-          <div class="toolbar">
-            <input type="text" v-model="importSqlFilePath" class="wide" placeholder="/path/to/file.sql">
-            <button class="primary" @click="importSqlFile" :disabled="loading.import">
-              {{ loading.import ? 'Importing…' : 'Import SQL file' }}
-            </button>
-          </div>
-          <div class="response-pane" v-html="response"></div>
-        </template>
+        <!-- Right panel -->
+        <main class="content">
+            <!-- Tab switcher -->
+            <nav class="tab-switcher">
+                <span v-for="tab in tabs" :key="tab.id"
+                      @click="activeView = tab.id"
+                      :class="{active: activeView === tab.id}">{{ tab.label }}</span>
+            </nav>
 
-        <!-- ── AI GENERATOR tab ── -->
-        <template v-if="activeView === 'ai'">
-          <div class="toolbar">
-            <label><input type="checkbox" v-model="dryRun.gptOperation"> Dry run</label>
-            <button @click="generateCompactFormLayout" :disabled="loading.ai">
-              Generate Compact Form Layout
-            </button>
-          </div>
-          <div class="response-pane" v-html="response"></div>
-        </template>
+            <!-- Tab content -->
+            <div class="tab-content">
 
-        <!-- ── SETTINGS tab ── -->
-        <template v-if="activeView === 'settings'">
-          <!-- Sub-tab selector -->
-          <div class="toolbar" style="border-bottom:1px solid var(--border);padding-bottom:6px;margin-bottom:8px">
-            <button @click="settingsView='connections'"
-                    :style="settingsView==='connections'?'color:var(--accent);font-weight:600;border-color:var(--accent)':''">
-              Connections
-            </button>
-            <button @click="settingsView='users';loadUsers()"
-                    :style="settingsView==='users'?'color:var(--accent);font-weight:600;border-color:var(--accent)':''">
-              Users
-            </button>
-          </div>
+                <!-- ── VIEWER tab ── -->
+                <template v-if="activeView === 'viewer'">
+                    <div class="toolbar">
+                        <button @click="showConcept">Concept</button>
+                        <button @click="showStructure">Structure</button>
+                        <button @click="describe">Describe</button>
+                        <button @click="showData()">Data</button>
+                        <button @click="showEditorForm=!showEditorForm">New</button>
+                        <input type="text" v-model="dataLimit" placeholder="Limit" style="width:60px" title="Rows per page">
+                        <button @click="prevPage" :disabled="dataOffset===0" title="Previous page">
+                            <svg class="octicon" viewBox="0 0 16 16" width="16" height="16"><path d="M9.78 12.78a.75.75 0 0 1-1.06 0L4.47 8.53a.75.75 0 0 1 0-1.06l4.25-4.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042L6.06 8l3.72 3.72a.75.75 0 0 1 0 1.06Z"></path></svg>
+                        </button>
+                        <span style="font-size:11px;color:var(--text2)">{{ dataOffset }}+</span>
+                        <button @click="nextPage" title="Next page">
+                            <svg class="octicon" viewBox="0 0 16 16" width="16" height="16"><path d="M6.22 3.22a.75.75 0 0 1 1.06 0l4.25 4.25a.75.75 0 0 1 0 1.06l-4.25 4.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042L9.94 8 6.22 4.28a.75.75 0 0 1 0-1.06Z"></path></svg>
+                        </button>
+                        <button @click="showIndexes">Indexes</button>
+                        <button @click="dropIndexes">Drop indexes</button>
+                        <button @click="toString">To string</button>
+                        <button @click="snippets">Snippets</button>
+                        <button @click="vue">Vue</button>
+                    </div>
+                    <div class="toolbar">
+                        <div class="autocomplete-wrap">
+                            <input type="text" class="wide" v-model="column" placeholder="Column name…"
+                                   @input="handleColumnInput" @focus="handleColumnFocus" @blur="hideColumnSuggestions">
+                            <ul class="autocomplete-list" v-if="showColumnSuggestions && filteredColumnNames.length">
+                                <li v-for="n in filteredColumnNames" :key="n"
+                                    @mousedown.prevent="selectColumnName(n)">{{ n }}</li>
+                            </ul>
+                        </div>
+                        <button @click="columnSearch">Column Search</button>
+                        <div class="autocomplete-wrap" style="flex:2">
+                            <input type="text" class="wide" v-model="queryString" placeholder="SQL query…"
+                                   @input="handleQueryInput" @keyup.enter="executeQuery()"
+                                   @keyup.up.prevent="handleQueryArrowUp" @keyup.down.prevent="handleQueryArrowDown"
+                                   @keyup.esc="showQuerySuggestions=false">
+                            <ul class="autocomplete-list" v-if="showQuerySuggestions && querySuggestions.length">
+                                <li v-for="(s,i) in querySuggestions" :key="s"
+                                    :class="{active: i===selectedQuerySuggestionIndex}"
+                                    @mousedown.prevent="selectQuerySuggestion(s)">{{ s }}</li>
+                            </ul>
+                        </div>
+                        <button @click="executeQuery()" :disabled="loading.query">Run</button>
+                        <button @click="executeQuery('explain')">Explain</button>
+                        <button @click="executeQuery('profiling')">Profile</button>
+                        <button @click="executeQuery('lastRow')">L</button>
+                        <button @click="executeQuery('lastUpdate')">LU</button>
+                        <button @click="showQueryHistory=!showQueryHistory" :class="{active:showQueryHistory}">
+                            <svg class="octicon" viewBox="0 0 16 16" width="16" height="16"><path d="m4.427 7.427 3.396 3.396a.25.25 0 0 0 .354 0l3.396-3.396A.25.25 0 0 0 11.396 7H4.604a.25.25 0 0 0-.177.427Z"></path></svg>
+                        </button>
+                    </div>
+                    <div class="toolbar" v-if="hasAi">
+                        <input type="text" class="wide" v-model="ai.message"
+                               placeholder="Ask AI…" @keyup.enter="sendChatMessage">
+                        <button @click="sendChatMessage" :disabled="loading.ai">Send</button>
+                    </div>
+                    <!-- Editor form -->
+                    <div v-if="showEditorForm" class="toolbar row-gap" style="border:1px solid var(--border);padding:8px;border-radius:6px">
+                        <div class="section-header">Insert / Update row in: {{ selectedTables[0] }}</div>
+                        <div v-for="col in editorColumns" :key="col" style="display:flex;gap:6px;align-items:center">
+                            <label style="width:140px;font-size:12px">{{ col }}</label>
+                            <input type="text" class="wide" v-model="editorData[col]" :placeholder="col">
+                        </div>
+                        <div style="display:flex;gap:6px">
+                            <button class="primary" @click="insertTableRow">{{ editorData.ID ? 'Update' : 'Insert' }}</button>
+                            <button @click="showEditorForm=false">Cancel</button>
+                        </div>
+                    </div>
+                    <div style="display:flex;flex:1;min-height:0;gap:8px">
+                        <div class="response-pane" ref="responsePane"
+                             v-if="!isSnippetResponse" v-html="response"
+                             @click="onResponsePaneClick"></div>
+                        <textarea class="response-pane snippets-textarea" v-else v-model="response"></textarea>
+                        <div class="history-panel" v-if="showQueryHistory" style="max-width:300px">
+                            <div class="section-header">Query History</div>
+                            <div class="history-item" v-for="(q,i) in queryHistory" :key="i">
+                                <span @click="onClickQueryHistory(q)" style="flex:1;word-break:break-all">{{ q }}</span>
+                                <span class="del" @click="queryHistory.splice(i,1);saveQueryHistory()">
+                                    <svg class="octicon" viewBox="0 0 16 16" width="16" height="16"><path d="M3.72 3.72a.75.75 0 0 1 1.06 0L8 6.94l3.22-3.22a.749.749 0 0 1 1.275.326.749.749 0 0 1-.215.734L9.06 8l3.22 3.22a.749.749 0 0 1-.326 1.275.749.749 0 0 1-.734-.215L8 9.06l-3.22 3.22a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042L6.94 8 3.72 4.78a.75.75 0 0 1 0-1.06Z"></path></svg>
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </template>
 
-          <!-- ── Connections sub-tab ── -->
-          <div v-if="settingsView==='connections'" style="display:flex;gap:16px;flex:1;min-height:0;overflow:hidden">
+                <!-- ── OPERATIONS tab ── -->
+                <template v-if="activeView === 'operations'">
+                    <div class="toolbar">
+                        <button @click="showConcept">Concept</button>
+                        <button @click="showStructure">Structure</button>
+                        <button @click="showIndexes">Indexes</button>
+                        <button @click="showSizes">Sizes</button>
+                        <button @click="showData()">Data</button>
+                    </div>
+                    <div class="toolbar">
+                        <input type="text" class="wide" v-model="queryString" placeholder="SQL query…" @keyup.enter="executeQuery()">
+                        <button @click="executeQuery()" :disabled="loading.query">Run</button>
+                        <label><input type="checkbox" v-model="dryRun.tableOperations"> Dry run</label>
+                        <button class="danger" @click="truncateTables">Truncate</button>
+                        <button class="danger" @click="dropTables">Drop</button>
+                        <button @click="insertFakeData">Fake data</button>
+                        <input type="text" v-model="confirmation.tableOperations" placeholder="Confirmation" style="width:130px">
+                    </div>
+                    <div class="toolbar">
+                        <input type="text" v-model="newTableName" placeholder="New name" style="width:140px">
+                        <button @click="renameTable" :disabled="selectedTables.length!==1">Rename</button>
+                        <button @click="cloneTable" :disabled="selectedTables.length!==1">Clone</button>
+                        <input type="text" v-model="confirmation.renameTable" placeholder="Confirmation" style="width:130px">
+                    </div>
+                    <div class="toolbar">
+                        <div class="autocomplete-wrap" style="width:160px">
+                            <input type="text" class="wide" v-model="column" placeholder="Column name…"
+                                   @input="handleColumnInput" @focus="handleColumnFocus" @blur="hideColumnSuggestions">
+                            <ul class="autocomplete-list" v-if="showColumnSuggestions && filteredColumnNames.length">
+                                <li v-for="n in filteredColumnNames" :key="n" @mousedown.prevent="selectColumnName(n)">{{ n }}</li>
+                            </ul>
+                        </div>
+                        <button @click="columnSearch">Search</button>
+                        <input type="text" v-model="newColumnName" placeholder="New name" style="width:120px">
+                        <input type="text" v-model="newColumnType" placeholder="New type" style="width:140px">
+                        <label><input type="checkbox" v-model="dryRun.columnOperations"> Dry run</label>
+                        <button @click="alterColumn">Alter</button>
+                        <button class="danger" @click="dropColumn">Drop col</button>
+                        <button @click="insertAfterColumn">Insert after</button>
+                        <input type="text" v-model="confirmation.columnOperations" placeholder="Confirmation" style="width:130px">
+                    </div>
+                    <div class="toolbar" style="background:var(--bg2);padding:6px;border-radius:6px;border:1px solid var(--border)">
+                        <select v-model="queryBuilder.operation" style="width:140px">
+                            <option value="select">SELECT * FROM</option>
+                            <option value="update">UPDATE</option>
+                            <option value="delete">DELETE FROM</option>
+                        </select>
+                        <span style="font-family:var(--mono);font-size:12px">{{ selectedTables[0] || '…' }}</span>
+                        <template v-if="queryBuilder.operation==='update'">
+                            SET
+                            <input type="text" v-model="queryBuilder.setColumn" placeholder="col" style="width:100px">
+                            =
+                            <input type="text" v-model="queryBuilder.setValue" placeholder="val" style="width:100px">
+                        </template>
+                        WHERE
+                        <input type="text" v-model="queryBuilder.whereColumn" placeholder="col" style="width:100px">
+                        =
+                        <input type="text" v-model="queryBuilder.whereValue" placeholder="val" style="width:100px">
+                        <button @click="executeBuilderQuery" :disabled="loading.query">Run</button>
+                    </div>
+                    <div class="response-pane" v-if="!isSnippetResponse" v-html="response"></div>
+                    <textarea class="response-pane snippets-textarea" v-else v-model="response"></textarea>
+                </template>
 
-            <!-- Connection list -->
-            <div style="width:42%;border-right:1px solid var(--border);padding-right:12px;overflow-y:auto">
-              <div class="section-header" style="margin-bottom:8px">Connections</div>
-              <div v-for="(c, i) in fullConnections" :key="i"
-                   style="border:1px solid var(--border);border-radius:6px;padding:8px 10px;margin-bottom:6px;display:flex;gap:8px;align-items:center">
-                <div style="flex:1;min-width:0">
-                  <div style="font-weight:600;font-size:13px">{{ c.name }}</div>
-                  <div style="font-size:11px;color:var(--text2)">{{ c.type }} · {{ c.server }}:{{ c.port }} · {{ c.database }}</div>
-                </div>
-                <button @click="editConnection(i)" style="padding:2px 8px;font-size:11px">Edit</button>
-                <button @click="deleteConnection(i)" class="danger" style="padding:2px 8px;font-size:11px">✕</button>
-              </div>
-              <button @click="resetConnForm()" style="width:100%;margin-top:4px">+ Add connection</button>
-            </div>
+                <!-- ── DATABASES tab ── -->
+                <template v-if="activeView === 'databases'">
+                    <div class="toolbar">
+                        <select v-model="selectedPeerConnection" style="width:180px">
+                            <option value="">— target —</option>
+                            <option v-for="(c, i) in connections" :key="i" :value="i">{{ c }}</option>
+                        </select>
+                        <button @click="showData(true)">Data</button>
+                        <button @click="getPeerPatch">Diff</button>
+                        <label><input type="checkbox" v-model="dryRun.databaseOperations"> Dry run</label>
+                        <button @click="cloneDatabase">Clone DB</button>
+                        <button @click="copyTables">Copy tables</button>
+                        <input type="text" v-model="confirmation.databaseOperations" placeholder="Confirmation" style="width:130px">
+                    </div>
+                    <div class="toolbar">
+                        <input type="text" class="wide" v-model="queryString" placeholder="SQL query…" @keyup.enter="executeQuery()">
+                        <button @click="executeQuery()" :disabled="loading.query">Run</button>
+                    </div>
+                    <div class="response-pane" v-html="response"></div>
+                </template>
 
-            <!-- Connection form -->
-            <div style="flex:1;overflow-y:auto">
-              <div class="section-header" style="margin-bottom:8px">
-                {{ connEditIndex >= 0 ? 'Edit: ' + (fullConnections[connEditIndex]?.name || '') : 'New connection' }}
-              </div>
-              <div class="row-gap">
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-                  <div>
-                    <label class="section-header">Name</label>
-                    <input type="text" class="wide" v-model="connForm.name" placeholder="My Database">
-                  </div>
-                  <div>
-                    <label class="section-header">Type</label>
-                    <select v-model="connForm.type" style="width:100%">
-                      <option value="mysql">MySQL</option>
-                      <option value="postgres">PostgreSQL</option>
-                      <option value="mssql">MSSQL</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label class="section-header">Server / Host</label>
-                    <input type="text" class="wide" v-model="connForm.server" placeholder="localhost">
-                  </div>
-                  <div>
-                    <label class="section-header">Port</label>
-                    <input type="number" class="wide" v-model.number="connForm.port">
-                  </div>
-                  <div>
-                    <label class="section-header">Database</label>
-                    <input type="text" class="wide" v-model="connForm.database" placeholder="mydb">
-                  </div>
-                  <div>
-                    <label class="section-header">Username</label>
-                    <input type="text" class="wide" v-model="connForm.user" placeholder="root">
-                  </div>
-                </div>
-                <div>
-                  <label class="section-header">Password</label>
-                  <input type="password" class="wide" v-model="connForm.password" placeholder="Leave blank to keep existing">
-                </div>
-                <div class="toolbar">
-                  <button class="primary" @click="saveConnection">
-                    {{ connEditIndex >= 0 ? 'Update' : 'Add' }}
-                  </button>
-                  <button @click="testConnectionForm">Test connection</button>
-                  <button @click="resetConnForm">Cancel</button>
-                </div>
-                <div v-if="connTestResult" style="font-family:var(--mono);font-size:12px;white-space:pre-wrap;padding:8px;border:1px solid var(--border);border-radius:6px;background:var(--bg2)">{{ connTestResult }}</div>
-              </div>
-            </div>
-          </div><!-- /connections sub-tab -->
+                <!-- ── EXPORTER tab ── -->
+                <template v-if="activeView === 'exporter'">
+                    <div style="display:flex;gap:10px;flex:1;min-height:0">
+                        <div class="row-gap" style="flex:1">
+                            <textarea v-model="quickReportQueryString" rows="4" placeholder="SQL query…"
+                                      style="width:100%;border:1px solid var(--border);border-radius:6px;padding:8px;font-family:var(--mono);font-size:12px;resize:vertical"></textarea>
+                            <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+                                <div><label class="section-header">Columns</label><input type="text" v-model="quickReportColumns" class="wide" placeholder="COL1,COL2"></div>
+                                <div><label class="section-header">Titles</label><input type="text" v-model="quickReportColumnTitles" class="wide" placeholder="Title 1, Title 2"></div>
+                                <div><label class="section-header">Decimal columns</label><input type="text" v-model="quickReportDecimalColumns" class="wide"></div>
+                                <div><label class="section-header">Text columns</label><input type="text" v-model="quickReportTextColumns" class="wide"></div>
+                                <div><label class="section-header">Summable columns</label><input type="text" v-model="quickReportSummableColumns" class="wide"></div>
+                                <div><label class="section-header">Center columns</label><input type="text" v-model="quickReportAlignCenterColumns" class="wide"></div>
+                                <div><label class="section-header">Sheet sep. column</label><input type="text" v-model="quickReportSheetSeparationColumn" class="wide"></div>
+                                <div><label class="section-header">Column widths</label><input type="text" v-model="quickReportColumnWidths" class="wide" placeholder="15,20,10"></div>
+                            </div>
+                            <div class="toolbar">
+                                <button class="primary" @click="exportQuickReportData" :disabled="loading.export">
+                                    <svg class="octicon" viewBox="0 0 16 16" width="16" height="16"><path d="M2.75 14A1.75 1.75 0 0 1 1 12.25v-2.5a.75.75 0 0 1 1.5 0v2.5c0 .138.112.25.25.25h10.5a.25.25 0 0 0 .25-.25v-2.5a.75.75 0 0 1 1.5 0v2.5A1.75 1.75 0 0 1 13.25 14Z"></path><path d="M7.25 7.689V2a.75.75 0 0 1 1.5 0v5.689l1.97-1.969a.749.749 0 1 1 1.06 1.06l-3.25 3.25a.749.749 0 0 1-1.06 0L4.22 6.78a.749.749 0 1 1 1.06-1.06l1.97 1.969Z"></path></svg>
+                                    {{ loading.export ? 'Exporting…' : 'Export Excel' }}
+                                </button>
+                                <button @click="showReportHistory=!showReportHistory">Recent history</button>
+                            </div>
+                        </div>
+                        <div class="history-panel" v-if="showReportHistory" style="width:35%;min-width:200px">
+                            <div class="section-header">Report History</div>
+                            <div class="history-item" v-for="(r,i) in reportHistory" :key="i">
+                                <span @click="loadReport(r)" style="flex:1">{{ r.query.substring(0,60) }}…</span>
+                                <span class="del" @click="reportHistory.splice(i,1);saveReportHistory()">
+                                    <svg class="octicon" viewBox="0 0 16 16" width="16" height="16"><path d="M3.72 3.72a.75.75 0 0 1 1.06 0L8 6.94l3.22-3.22a.749.749 0 0 1 1.275.326.749.749 0 0 1-.215.734L9.06 8l3.22 3.22a.749.749 0 0 1-.326 1.275.749.749 0 0 1-.734-.215L8 9.06l-3.22 3.22a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042L6.94 8 3.72 4.78a.75.75 0 0 1 0-1.06Z"></path></svg>
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </template>
 
-          <!-- ── Users sub-tab ── -->
-          <div v-if="settingsView==='users'" style="display:flex;gap:16px;flex:1;min-height:0">
-            <!-- User list -->
-            <div style="width:40%;border-right:1px solid var(--border);padding-right:12px;overflow-y:auto">
-              <div class="section-header" style="margin-bottom:8px">User accounts</div>
-              <div v-for="u in userList" :key="u"
-                   style="border:1px solid var(--border);border-radius:6px;padding:7px 10px;margin-bottom:5px;display:flex;gap:8px;align-items:center">
-                <span style="flex:1;font-family:var(--mono);font-size:13px">{{ u }}</span>
-                <button @click="startChangePassword(u)" style="padding:2px 8px;font-size:11px">Change pw</button>
-                <button @click="deleteUser(u)" class="danger" style="padding:2px 8px;font-size:11px"
-                        :disabled="userList.length===1">✕</button>
-              </div>
-              <button @click="startAddUser()" style="width:100%;margin-top:4px">+ Add user</button>
-            </div>
-            <!-- User form -->
-            <div style="flex:1;overflow-y:auto">
-              <template v-if="userEditMode">
-                <div class="section-header" style="margin-bottom:8px">
-                  {{ userEditMode==='add' ? 'New user' : 'Change password: ' + userForm.username }}
-                </div>
-                <div class="row-gap">
-                  <div v-if="userEditMode==='add'">
-                    <label class="section-header">Username</label>
-                    <input type="text" class="wide" v-model="userForm.username" placeholder="username">
-                  </div>
-                  <div>
-                    <label class="section-header">New password</label>
-                    <input type="password" class="wide" v-model="userForm.password" placeholder="••••••••">
-                  </div>
-                  <div>
-                    <label class="section-header">Confirm password</label>
-                    <input type="password" class="wide" v-model="userForm.confirmPassword" placeholder="••••••••">
-                  </div>
-                  <div class="toolbar">
-                    <button class="primary" @click="saveUser">Save</button>
-                    <button @click="cancelUserEdit">Cancel</button>
-                  </div>
-                  <div v-if="userMessage" :style="'font-size:12px;padding:6px;border-radius:4px;border:1px solid;' + (userMessage.startsWith('✅') ? 'color:var(--success);border-color:var(--success)' : 'color:var(--danger);border-color:var(--danger)')">
-                    {{ userMessage }}
-                  </div>
-                </div>
-              </template>
-              <div v-else style="color:var(--text2);font-size:13px;padding-top:8px">Select a user or add a new one.</div>
-            </div>
-          </div><!-- /users sub-tab -->
+                <!-- ── IMPORTER tab ── -->
+                <template v-if="activeView === 'importer'">
+                    <div class="toolbar">
+                        <input type="text" v-model="importSqlFilePath" class="wide" placeholder="/path/to/file.sql">
+                        <button class="primary" @click="importSqlFile" :disabled="loading.import">
+                            <svg class="octicon" viewBox="0 0 16 16" width="16" height="16"><path d="M2.75 14A1.75 1.75 0 0 1 1 12.25v-2.5a.75.75 0 0 1 1.5 0v2.5c0 .138.112.25.25.25h10.5a.25.25 0 0 0 .25-.25v-2.5a.75.75 0 0 1 1.5 0v2.5A1.75 1.75 0 0 1 13.25 14Z"></path><path d="M11.78 4.72a.749.749 0 1 1-1.06 1.06L8.75 3.811V9.5a.75.75 0 0 1-1.5 0V3.811L5.28 5.78a.749.749 0 1 1-1.06-1.06l3.25-3.25a.749.749 0 0 1 1.06 0l3.25 3.25Z"></path></svg>
+                            {{ loading.import ? 'Importing…' : 'Import SQL file' }}
+                        </button>
+                    </div>
+                    <div class="response-pane" v-html="response"></div>
+                </template>
 
-        </template>
+                <!-- ── AI GENERATOR tab ── -->
+                <template v-if="activeView === 'ai'">
+                    <div class="toolbar">
+                        <label><input type="checkbox" v-model="dryRun.gptOperation"> Dry run</label>
+                        <button @click="generateCompactFormLayout" :disabled="loading.ai">
+                            <svg class="octicon" viewBox="0 0 16 16" width="16" height="16"><path d="M0 8a8 8 0 0 1 16 0v5.25a.75.75 0 0 1-1.5 0V8a6.5 6.5 0 1 0-13 0v5.25a.75.75 0 0 1-1.5 0Zm3-1.25C3 5.784 3.784 5 4.75 5h6.5c.966 0 1.75.784 1.75 1.75v1.5A1.75 1.75 0 0 1 11.25 10h-6.5A1.75 1.75 0 0 1 3 8.25Zm1.47-.53a.75.75 0 0 0 0 1.06l1.5 1.5a.75.75 0 0 0 1.06 0L8 7.81l.97.97a.75.75 0 0 0 1.06 0l1.5-1.5a.749.749 0 0 0-.326-1.275.749.749 0 0 0-.734.215l-.97.97-.97-.97a.75.75 0 0 0-1.06 0l-.97.97-.97-.97a.75.75 0 0 0-1.06 0Zm1.03 6.03a.75.75 0 0 1 .75-.75h3.5a.75.75 0 0 1 0 1.5h-3.5a.75.75 0 0 1-.75-.75Z"></path></svg>
+                            Generate Compact Form Layout
+                        </button>
+                    </div>
+                    <div class="response-pane" v-html="response"></div>
+                </template>
 
-      </div><!-- /tab-content -->
-    </main>
-  </div><!-- /app-layout -->
+                <!-- ── SETTINGS tab ── -->
+                <template v-if="activeView === 'settings'">
+                    <!-- Sub-tab selector -->
+                    <div class="toolbar" style="border-bottom:1px solid var(--border);padding-bottom:6px;margin-bottom:8px">
+                        <button @click="settingsView='connections'"
+                                :style="settingsView==='connections' ? 'color:var(--accent);font-weight:600;border-color:var(--accent)' : ''">
+                            <svg class="octicon" viewBox="0 0 16 16" width="16" height="16"><path d="M4 8H2.5a1 1 0 0 0-1 1v5.25a.75.75 0 0 1-1.5 0V9a2.5 2.5 0 0 1 2.5-2.5H4V5.133a1.75 1.75 0 0 1 1.533-1.737l2.831-.353.76-.913c.332-.4.825-.63 1.344-.63h.782c.966 0 1.75.784 1.75 1.75V4h2.25a.75.75 0 0 1 0 1.5H13v4h2.25a.75.75 0 0 1 0 1.5H13v.75a1.75 1.75 0 0 1-1.75 1.75h-.782c-.519 0-1.012-.23-1.344-.63l-.761-.912-2.83-.354A1.75 1.75 0 0 1 4 9.867Zm6.276-4.91-.95 1.14a.753.753 0 0 1-.483.265l-3.124.39a.25.25 0 0 0-.219.248v4.734c0 .126.094.233.219.249l3.124.39a.752.752 0 0 1 .483.264l.95 1.14a.25.25 0 0 0 .192.09h.782a.25.25 0 0 0 .25-.25v-8.5a.25.25 0 0 0-.25-.25h-.782a.25.25 0 0 0-.192.09Z"></path></svg>
+                            Connections
+                        </button>
+                        <button @click="settingsView='users';loadUsers()"
+                                :style="settingsView==='users' ? 'color:var(--accent);font-weight:600;border-color:var(--accent)' : ''">
+                            <svg class="octicon" viewBox="0 0 16 16" width="16" height="16"><path d="M2 5.5a3.5 3.5 0 1 1 5.898 2.549 5.508 5.508 0 0 1 3.034 4.084.75.75 0 1 1-1.482.235 4 4 0 0 0-7.9 0 .75.75 0 0 1-1.482-.236A5.507 5.507 0 0 1 3.102 8.05 3.493 3.493 0 0 1 2 5.5ZM11 4a3.001 3.001 0 0 1 2.22 5.018 5.01 5.01 0 0 1 2.56 3.012.749.749 0 0 1-.885.954.752.752 0 0 1-.549-.514 3.507 3.507 0 0 0-2.522-2.372.75.75 0 0 1-.574-.73v-.352a.75.75 0 0 1 .416-.672A1.5 1.5 0 0 0 11 5.5.75.75 0 0 1 11 4Zm-5.5-.5a2 2 0 1 0-.001 3.999A2 2 0 0 0 5.5 3.5Z"></path></svg>
+                            Users
+                        </button>
+                    </div>
 
-  <!-- Inline cell editor -->
-  <input id="inline-editor" type="text" @blur="commitInlineEdit" @keyup.enter="commitInlineEdit" @keyup.esc="cancelInlineEdit">
+                    <!-- ── Connections sub-tab ── -->
+                    <div v-if="settingsView==='connections'" style="display:flex;gap:16px;flex:1;min-height:0;overflow:hidden">
+
+                        <!-- Connection list -->
+                        <div style="width:42%;border-right:1px solid var(--border);padding-right:12px;overflow-y:auto">
+                            <div class="section-header" style="margin-bottom:8px">Connections</div>
+                            <div v-for="(c, i) in fullConnections" :key="i"
+                                 style="border:1px solid var(--border);border-radius:6px;padding:8px 10px;margin-bottom:6px;display:flex;gap:8px;align-items:center">
+                                <div style="flex:1;min-width:0">
+                                    <div style="font-weight:600;font-size:13px">{{ c.name }}</div>
+                                    <div style="font-size:11px;color:var(--text2)">{{ c.type }} · {{ c.server }}:{{ c.port }} · {{ c.database }}</div>
+                                </div>
+                                <button @click="editConnection(i)" style="padding:2px 8px;font-size:11px">
+                                    <svg class="octicon" viewBox="0 0 16 16" width="16" height="16"><path d="M11.013 1.427a1.75 1.75 0 0 1 2.474 0l1.086 1.086a1.75 1.75 0 0 1 0 2.474l-8.61 8.61c-.21.21-.47.364-.756.445l-3.251.93a.75.75 0 0 1-.927-.928l.929-3.25c.081-.286.235-.547.445-.758l8.61-8.61Zm.176 4.823L9.75 4.81l-6.286 6.287a.253.253 0 0 0-.064.108l-.558 1.953 1.953-.558a.253.253 0 0 0 .108-.064Zm1.238-3.763a.25.25 0 0 0-.354 0L10.811 3.75l1.439 1.44 1.263-1.263a.25.25 0 0 0 0-.354Z"></path></svg>
+                                    Edit
+                                </button>
+                                <button @click="deleteConnection(i)" class="danger" style="padding:2px 8px;font-size:11px">
+                                    <svg class="octicon" viewBox="0 0 16 16" width="16" height="16"><path d="M11 1.75V3h2.25a.75.75 0 0 1 0 1.5H2.75a.75.75 0 0 1 0-1.5H5V1.75C5 .784 5.784 0 6.75 0h2.5C10.216 0 11 .784 11 1.75ZM4.496 6.675l.66 6.6a.25.25 0 0 0 .249.225h5.19a.25.25 0 0 0 .249-.225l.66-6.6a.75.75 0 0 1 1.492.149l-.66 6.6A1.748 1.748 0 0 1 10.595 15h-5.19a1.75 1.75 0 0 1-1.741-1.575l-.66-6.6a.75.75 0 1 1 1.492-.15ZM6.5 1.75V3h3V1.75a.25.25 0 0 0-.25-.25h-2.5a.25.25 0 0 0-.25.25Z"></path></svg>
+                                </button>
+                            </div>
+                            <button @click="resetConnForm()" style="width:100%;margin-top:4px">
+                                <svg class="octicon" viewBox="0 0 16 16" width="16" height="16"><path d="M7.75 2a.75.75 0 0 1 .75.75V7h4.25a.75.75 0 0 1 0 1.5H8.5v4.25a.75.75 0 0 1-1.5 0V8.5H2.75a.75.75 0 0 1 0-1.5H7V2.75A.75.75 0 0 1 7.75 2Z"></path></svg>
+                                Add connection
+                            </button>
+                        </div>
+
+                        <!-- Connection form -->
+                        <div style="flex:1;overflow-y:auto">
+                            <div class="section-header" style="margin-bottom:8px">
+                                {{ connEditIndex >= 0 ? 'Edit: ' + (fullConnections[connEditIndex]?.name || '') : 'New connection' }}
+                            </div>
+                            <div class="row-gap">
+                                <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+                                    <div>
+                                        <label class="section-header">Name</label>
+                                        <input type="text" class="wide" v-model="connForm.name" placeholder="My Database">
+                                    </div>
+                                    <div>
+                                        <label class="section-header">Type</label>
+                                        <select v-model="connForm.type" style="width:100%">
+                                            <option value="mysql">MySQL</option>
+                                            <option value="postgres">PostgreSQL</option>
+                                            <option value="mssql">MSSQL</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label class="section-header">Server / Host</label>
+                                        <input type="text" class="wide" v-model="connForm.server" placeholder="localhost">
+                                    </div>
+                                    <div>
+                                        <label class="section-header">Port</label>
+                                        <input type="number" class="wide" v-model.number="connForm.port">
+                                    </div>
+                                    <div>
+                                        <label class="section-header">Database</label>
+                                        <input type="text" class="wide" v-model="connForm.database" placeholder="mydb">
+                                    </div>
+                                    <div>
+                                        <label class="section-header">Username</label>
+                                        <input type="text" class="wide" v-model="connForm.user" placeholder="root">
+                                    </div>
+                                </div>
+                                <div>
+                                    <label class="section-header">Password</label>
+                                    <input type="password" class="wide" v-model="connForm.password" placeholder="Leave blank to keep existing">
+                                </div>
+                                <div class="toolbar">
+                                    <button class="primary" @click="saveConnection">
+                                        {{ connEditIndex >= 0 ? 'Update' : 'Add' }}
+                                    </button>
+                                    <button @click="testConnectionForm">Test connection</button>
+                                    <button @click="resetConnForm">Cancel</button>
+                                </div>
+                                <div v-if="connTestResult" class="alert"
+                                     :class="connTestResult.type === 'success' ? 'alert-success' : 'alert-danger'">
+                                    {{ connTestResult.text }}
+                                </div>
+                            </div>
+                        </div>
+                    </div><!-- /connections sub-tab -->
+
+                    <!-- ── Users sub-tab ── -->
+                    <div v-if="settingsView==='users'" style="display:flex;gap:16px;flex:1;min-height:0">
+                        <!-- User list -->
+                        <div style="width:40%;border-right:1px solid var(--border);padding-right:12px;overflow-y:auto">
+                            <div class="section-header" style="margin-bottom:8px">User accounts</div>
+                            <div v-for="u in userList" :key="u"
+                                 style="border:1px solid var(--border);border-radius:6px;padding:7px 10px;margin-bottom:5px;display:flex;gap:8px;align-items:center">
+                                <span style="flex:1;font-family:var(--mono);font-size:13px">{{ u }}</span>
+                                <button @click="startChangePassword(u)" style="padding:2px 8px;font-size:11px">
+                                    <svg class="octicon" viewBox="0 0 16 16" width="16" height="16"><path d="M10.5 0a5.499 5.499 0 1 1-1.288 10.848l-.932.932a.749.749 0 0 1-.53.22H7v.75a.749.749 0 0 1-.22.53l-.5.5a.749.749 0 0 1-.53.22H5v.75a.749.749 0 0 1-.22.53l-.5.5a.749.749 0 0 1-.53.22h-2A1.75 1.75 0 0 1 0 14.25v-2c0-.199.079-.389.22-.53l4.932-4.932A5.5 5.5 0 0 1 10.5 0Zm-4 5.5c-.001.431.069.86.205 1.269a.75.75 0 0 1-.181.768L1.5 12.56v1.69c0 .138.112.25.25.25h1.69l.06-.06v-1.19a.75.75 0 0 1 .75-.75h1.19l.06-.06v-1.19a.75.75 0 0 1 .75-.75h1.19l1.023-1.025a.75.75 0 0 1 .768-.18A4 4 0 1 0 6.5 5.5ZM11 6a1 1 0 1 1 0-2 1 1 0 0 1 0 2Z"></path></svg>
+                                    Change password
+                                </button>
+                                <button @click="deleteUser(u)" class="danger" style="padding:2px 8px;font-size:11px"
+                                        :disabled="userList.length===1">
+                                    <svg class="octicon" viewBox="0 0 16 16" width="16" height="16"><path d="M11 1.75V3h2.25a.75.75 0 0 1 0 1.5H2.75a.75.75 0 0 1 0-1.5H5V1.75C5 .784 5.784 0 6.75 0h2.5C10.216 0 11 .784 11 1.75ZM4.496 6.675l.66 6.6a.25.25 0 0 0 .249.225h5.19a.25.25 0 0 0 .249-.225l.66-6.6a.75.75 0 0 1 1.492.149l-.66 6.6A1.748 1.748 0 0 1 10.595 15h-5.19a1.75 1.75 0 0 1-1.741-1.575l-.66-6.6a.75.75 0 1 1 1.492-.15ZM6.5 1.75V3h3V1.75a.25.25 0 0 0-.25-.25h-2.5a.25.25 0 0 0-.25.25Z"></path></svg>
+                                </button>
+                            </div>
+                            <button @click="startAddUser()" style="width:100%;margin-top:4px">
+                                <svg class="octicon" viewBox="0 0 16 16" width="16" height="16"><path d="M7.75 2a.75.75 0 0 1 .75.75V7h4.25a.75.75 0 0 1 0 1.5H8.5v4.25a.75.75 0 0 1-1.5 0V8.5H2.75a.75.75 0 0 1 0-1.5H7V2.75A.75.75 0 0 1 7.75 2Z"></path></svg>
+                                Add user
+                            </button>
+                        </div>
+                        <!-- User form -->
+                        <div style="flex:1;overflow-y:auto">
+                            <template v-if="userEditMode">
+                                <div class="section-header" style="margin-bottom:8px">
+                                    {{ userEditMode==='add' ? 'New user' : 'Change password: ' + userForm.username }}
+                                </div>
+                                <div class="row-gap">
+                                    <div v-if="userEditMode==='add'">
+                                        <label class="section-header">Username</label>
+                                        <input type="text" class="wide" v-model="userForm.username" placeholder="username">
+                                    </div>
+                                    <div>
+                                        <label class="section-header">New password</label>
+                                        <input type="password" class="wide" v-model="userForm.password" placeholder="••••••••">
+                                    </div>
+                                    <div>
+                                        <label class="section-header">Confirm password</label>
+                                        <input type="password" class="wide" v-model="userForm.confirmPassword" placeholder="••••••••">
+                                    </div>
+                                    <div class="toolbar">
+                                        <button class="primary" @click="saveUser">Save</button>
+                                        <button @click="cancelUserEdit">Cancel</button>
+                                    </div>
+                                    <div v-if="userMessage" class="alert"
+                                         :class="userMessage.type === 'success' ? 'alert-success' : 'alert-danger'">
+                                        {{ userMessage.text }}
+                                    </div>
+                                </div>
+                            </template>
+                            <div v-else style="color:var(--text2);font-size:13px;padding-top:8px">Select a user or add a new one.</div>
+                        </div>
+                    </div><!-- /users sub-tab -->
+
+                </template>
+
+            </div><!-- /tab-content -->
+        </main>
+    </div><!-- /app-layout -->
+
+    <!-- Inline cell editor -->
+    <input id="inline-editor" type="text" @blur="commitInlineEdit" @keyup.enter="commitInlineEdit" @keyup.esc="cancelInlineEdit">
 </div>
 
 <script>
 const { createApp } = Vue
 
 createApp({
-  data() {
-    return {
-      isAuthenticated: !!localStorage.getItem('dbviewer_auth'),
-      isDark: localStorage.getItem('dbviewer_theme') === 'dark' || (localStorage.getItem('dbviewer_theme') !== 'light' && window.matchMedia('(prefers-color-scheme: dark)').matches),
-      loginForm: { username: '', password: '' },
-      loginError: '',
-      connections: [],
-      selectedConnection: '',
-      selectedPeerConnection: '',
-      tables: [],
-      selectedTables: [],
-      tableFilterKeyword: '',
-      activeView: localStorage.getItem('dbviewer_activeView') || 'viewer',
-      tabs: [
-        { id: 'viewer', label: 'Viewer' },
-        { id: 'operations', label: 'Operations' },
-        { id: 'databases', label: 'Databases' },
-        { id: 'exporter', label: 'Exporter' },
-        { id: 'importer', label: 'Importer' },
-        { id: 'ai', label: 'AI Generator' },
-        { id: 'settings', label: 'Settings' },
-      ],
-      response: '',
-      isSnippetResponse: false,
-      column: '',
-      availColumnNames: [],
-      showColumnSuggestions: false,
-      queryString: '',
-      queryHistory: JSON.parse(localStorage.getItem('dbviewer_queryHistory') || '[]'),
-      showQueryHistory: false,
-      showQuerySuggestions: false,
-      querySuggestions: [],
-      selectedQuerySuggestionIndex: -1,
-      limitIdFrom: '',
-      dataOffset: 0,
-      dataLimit: 100,
-      dataTableRowCount: 0,
-      // Connection settings
-      settingsView: 'connections',
-      connForm: { name: '', type: 'mysql', server: 'localhost', port: 3306, database: '', user: '', password: '' },
-      connEditIndex: -1,
-      fullConnections: [],
-      connTestResult: '',
-      // User management
-      userList: [],
-      userForm: { username: '', password: '', confirmPassword: '' },
-      userEditMode: '',
-      userMessage: '',
-      // Column sort
-      sortCol: '',
-      sortDir: 'asc',
-      newTableName: '',
-      newColumnName: '',
-      newColumnType: '',
-      dryRun: { tableOperations: true, columnOperations: true, databaseOperations: true, gptOperation: true },
-      confirmation: { tableOperations: '', columnOperations: '', databaseOperations: '', renameTable: '' },
-      queryBuilder: { operation: 'select', setColumn: '', setValue: '', whereColumn: 'ID', whereValue: '' },
-      quickReportQueryString: '',
-      quickReportColumns: '',
-      quickReportColumnTitles: '',
-      quickReportDecimalColumns: '',
-      quickReportTextColumns: '',
-      quickReportSummableColumns: '',
-      quickReportAlignCenterColumns: '',
-      quickReportSheetSeparationColumn: '',
-      quickReportColumnWidths: '',
-      showReportHistory: false,
-      reportHistory: JSON.parse(localStorage.getItem('dbviewer_reportHistory') || '[]'),
-      importSqlFilePath: '',
-      ai: { message: '' },
-      showEditorForm: false,
-      editorColumns: [],
-      editorData: {},
-      hasAi: false,
-      loading: {},
-      // inline editor state
-      _inlineEdit: { table:'', column:'', uuid:'', cell:null },
-    }
-  },
-  computed: {
-    filteredTables() {
-      if (!this.tableFilterKeyword) return this.tables
-      const kw = this.tableFilterKeyword.toLowerCase()
-      return this.tables.filter(t => t.table.toLowerCase().includes(kw))
-    },
-    filteredColumnNames() {
-      if (!this.column) return this.availColumnNames
-      const kw = this.column.toLowerCase()
-      return this.availColumnNames.filter(n => n.toLowerCase().includes(kw))
-    },
-    authHeader() {
-      const auth = localStorage.getItem('dbviewer_auth')
-      if (!auth) return {}
-      // Include session ID so multiple tabs don't clobber each other's active connection
-      const sessionId = localStorage.getItem('dbviewer_session_id') || ''
-      return { Authorization: `Basic ${auth}`, 'X-Session-Id': sessionId }
-    }
-  },
-  methods: {
-    // ── Auth ──
-    async login() {
-      this.loading.login = true
-      this.loginError = ''
-      try {
-        const r = await axios.post('/api/login', this.loginForm)
-        if (r.data.success) {
-          const creds = btoa(`${this.loginForm.username}:${this.loginForm.password}`)
-          localStorage.setItem('dbviewer_auth', creds)
-          // Generate a unique session ID for this browser tab
-          if (!localStorage.getItem('dbviewer_session_id')) {
-            localStorage.setItem('dbviewer_session_id', Math.random().toString(36).slice(2) + Date.now().toString(36))
-          }
-          this.isAuthenticated = true
-          this.loginForm.password = ''
-          this.loadConnections()
-        } else {
-          this.loginError = r.data.message || 'Invalid credentials'
+    data() {
+        return {
+            isAuthenticated: !!localStorage.getItem('dbviewer_auth'),
+            isDark: localStorage.getItem('dbviewer_theme') === 'dark' || (localStorage.getItem('dbviewer_theme') !== 'light' && window.matchMedia('(prefers-color-scheme: dark)').matches),
+            loginForm: { username: '', password: '' },
+            loginError: '',
+            connections: [],
+            selectedConnection: '',
+            selectedPeerConnection: '',
+            tables: [],
+            selectedTables: [],
+            tableFilterKeyword: '',
+            activeView: localStorage.getItem('dbviewer_activeView') || 'viewer',
+            tabs: [
+                { id: 'viewer', label: 'Viewer' },
+                { id: 'operations', label: 'Operations' },
+                { id: 'databases', label: 'Databases' },
+                { id: 'exporter', label: 'Exporter' },
+                { id: 'importer', label: 'Importer' },
+                { id: 'ai', label: 'AI Generator' },
+                { id: 'settings', label: 'Settings' },
+            ],
+            response: '',
+            isSnippetResponse: false,
+            column: '',
+            availColumnNames: [],
+            showColumnSuggestions: false,
+            queryString: '',
+            queryHistory: JSON.parse(localStorage.getItem('dbviewer_queryHistory') || '[]'),
+            showQueryHistory: false,
+            showQuerySuggestions: false,
+            querySuggestions: [],
+            selectedQuerySuggestionIndex: -1,
+            limitIdFrom: '',
+            dataOffset: 0,
+            dataLimit: 100,
+            dataTableRowCount: 0,
+            // Connection settings
+            settingsView: 'connections',
+            connForm: { name: '', type: 'mysql', server: 'localhost', port: 3306, database: '', user: '', password: '' },
+            connEditIndex: -1,
+            fullConnections: [],
+            connTestResult: null,
+            // User management
+            userList: [],
+            userForm: { username: '', password: '', confirmPassword: '' },
+            userEditMode: '',
+            userMessage: null,
+            // Column sort
+            sortCol: '',
+            sortDir: 'asc',
+            newTableName: '',
+            newColumnName: '',
+            newColumnType: '',
+            dryRun: { tableOperations: true, columnOperations: true, databaseOperations: true, gptOperation: true },
+            confirmation: { tableOperations: '', columnOperations: '', databaseOperations: '', renameTable: '' },
+            queryBuilder: { operation: 'select', setColumn: '', setValue: '', whereColumn: 'ID', whereValue: '' },
+            quickReportQueryString: '',
+            quickReportColumns: '',
+            quickReportColumnTitles: '',
+            quickReportDecimalColumns: '',
+            quickReportTextColumns: '',
+            quickReportSummableColumns: '',
+            quickReportAlignCenterColumns: '',
+            quickReportSheetSeparationColumn: '',
+            quickReportColumnWidths: '',
+            showReportHistory: false,
+            reportHistory: JSON.parse(localStorage.getItem('dbviewer_reportHistory') || '[]'),
+            importSqlFilePath: '',
+            ai: { message: '' },
+            showEditorForm: false,
+            editorColumns: [],
+            editorData: {},
+            hasAi: false,
+            loading: {},
+            // inline editor state
+            _inlineEdit: { table: '', column: '', uuid: '', cell: null },
         }
-      } catch(e) {
-        this.loginError = 'Login failed'
-      } finally { this.loading.login = false }
     },
-    logout() {
-      localStorage.removeItem('dbviewer_auth')
-      this.isAuthenticated = false
-    },
-
-    // ── API helper ──
-    async apiCall(endpoint, data = {}, method = 'post') {
-      try {
-        const resp = await axios({ method, url: `/api/${endpoint}`, data, headers: this.authHeader })
-        if (resp.data?.success === false && resp.data?.message) {
-          alert(resp.data.message)
+    computed: {
+        filteredTables() {
+            if (!this.tableFilterKeyword) return this.tables
+            const kw = this.tableFilterKeyword.toLowerCase()
+            return this.tables.filter(t => t.table.toLowerCase().includes(kw))
+        },
+        filteredColumnNames() {
+            if (!this.column) return this.availColumnNames
+            const kw = this.column.toLowerCase()
+            return this.availColumnNames.filter(n => n.toLowerCase().includes(kw))
+        },
+        authHeader() {
+            const auth = localStorage.getItem('dbviewer_auth')
+            if (!auth) return {}
+            // Include session ID so multiple tabs don't clobber each other's active connection
+            const sessionId = localStorage.getItem('dbviewer_session_id') || ''
+            return { Authorization: `Basic ${auth}`, 'X-Session-Id': sessionId }
         }
-        return resp.data
-      } catch(err) {
-        if (err.response?.status === 401) {
-          this.isAuthenticated = false
-          localStorage.removeItem('dbviewer_auth')
-        }
-        throw err
-      }
     },
+    methods: {
+        // ── Auth ──
+        async login() {
+            this.loading.login = true
+            this.loginError = ''
+            try {
+                const r = await axios.post('/api/login', this.loginForm)
+                if (r.data.success) {
+                    const creds = btoa(`${this.loginForm.username}:${this.loginForm.password}`)
+                    localStorage.setItem('dbviewer_auth', creds)
+                    // Generate a unique session ID for this browser tab
+                    if (!localStorage.getItem('dbviewer_session_id')) {
+                        localStorage.setItem('dbviewer_session_id', Math.random().toString(36).slice(2) + Date.now().toString(36))
+                    }
+                    this.isAuthenticated = true
+                    this.loginForm.password = ''
+                    this.loadConnections()
+                } else {
+                    this.loginError = r.data.message || 'Invalid credentials'
+                }
+            } catch(e) {
+                this.loginError = 'Login failed'
+            } finally { this.loading.login = false }
+        },
+        logout() {
+            localStorage.removeItem('dbviewer_auth')
+            this.isAuthenticated = false
+        },
 
-    setResponse(d) {
-      this.isSnippetResponse = !!(d && (d.isSnippet || (typeof d.html === 'string' && d.html.length > 0 && /^[\w\s\[\]\.\/\*\-\+=#_$,;:@!?'"\(\)]+$/.test(d.html.substring(0,50)) && !d.html.startsWith('<'))))
-      this.isSnippetResponse = !!(d && d.isSnippet)
-      this.response = d?.html || ''
-    },
+        // ── API helper ──
+        async apiCall(endpoint, data = {}, method = 'post') {
+            try {
+                const resp = await axios({ method, url: `/api/${endpoint}`, data, headers: this.authHeader })
+                if (resp.data?.success === false && resp.data?.message) {
+                    alert(resp.data.message)
+                }
+                return resp.data
+            } catch(err) {
+                if (err.response?.status === 401) {
+                    this.isAuthenticated = false
+                    localStorage.removeItem('dbviewer_auth')
+                }
+                throw err
+            }
+        },
 
-    // ── Connections ──
-    async loadConnections() {
-      const d = await this.apiCall('connections', {}, 'get')
-      if (d?.connections) this.connections = d.connections
-      // Check AI config
-      this.hasAi = false
-      try {
-        const r = await axios.get('/api/config', { headers: this.authHeader })
-        this.hasAi = !!r.data?.ai_key_set
-      } catch(e) {}
-    },
-    async onConnectionChanged() {
-      if (this.selectedConnection === '') return
-      const d = await this.apiCall('setActiveConnection', { connection: parseInt(this.selectedConnection) })
-      if (d?.tables) {
-        this.tables = d.tables
-        this.selectedTables = []
-        this.dataOffset = 0
-        this.connTestResult = ''
-        this.loadColumnNames()
-      } else if (d && !d.success && d.diagnostics) {
-        const diag = d.diagnostics
-        alert(`Connection failed: ${d.message}
+        setResponse(d) {
+            this.isSnippetResponse = !!(d && (d.isSnippet || (typeof d.html === 'string' && d.html.length > 0 && /^[\w\s\[\]\.\/\*\-\+=#_$,;:@!?'"\(\)]+$/.test(d.html.substring(0, 50)) && !d.html.startsWith('<'))))
+            this.isSnippetResponse = !!(d && d.isSnippet)
+            this.response = d?.html || ''
+        },
 
-Hint: ${diag.hint}`)
-      }
-    },
-    async refreshConnection() {
-      if (this.selectedConnection === '') return
-      const d = await this.apiCall('setActiveConnection', { connection: parseInt(this.selectedConnection), reload: true })
-      if (d?.tables) this.tables = d.tables
-    },
-    async loadColumnNames() {
-      const allTables = this.tables.map(t => t.table)
-      if (!allTables.length) return
-      const d = await this.apiCall('getColumnNames', { tables: allTables })
-      if (d?.columnNames) this.availColumnNames = d.columnNames
-    },
+        // ── Connections ──
+        async loadConnections() {
+            const d = await this.apiCall('connections', {}, 'get')
+            if (d?.connections) this.connections = d.connections
+            // Check AI config
+            this.hasAi = false
+            try {
+                const r = await axios.get('/api/config', { headers: this.authHeader })
+                this.hasAi = !!r.data?.ai_key_set
+            } catch(e) {}
+        },
+        async onConnectionChanged() {
+            if (this.selectedConnection === '') return
+            const d = await this.apiCall('setActiveConnection', { connection: parseInt(this.selectedConnection) })
+            if (d?.tables) {
+                this.tables = d.tables
+                this.selectedTables = []
+                this.dataOffset = 0
+                this.connTestResult = null
+                this.loadColumnNames()
+            } else if (d && !d.success && d.diagnostics) {
+                const diag = d.diagnostics
+                alert(`Connection failed: ${d.message}\n\nHint: ${diag.hint}`)
+            }
+        },
+        async refreshConnection() {
+            if (this.selectedConnection === '') return
+            const d = await this.apiCall('setActiveConnection', { connection: parseInt(this.selectedConnection), reload: true })
+            if (d?.tables) this.tables = d.tables
+        },
+        async loadColumnNames() {
+            const allTables = this.tables.map(t => t.table)
+            if (!allTables.length) return
+            const d = await this.apiCall('getColumnNames', { tables: allTables })
+            if (d?.columnNames) this.availColumnNames = d.columnNames
+        },
 
-    // ── Viewer actions ──
-    async showConcept() {
-      const d = await this.apiCall('concept', { tables: this.selectedTables })
-      this.isSnippetResponse = true; this.response = d?.html || ''
-    },
-    async showStructure() {
-      const d = await this.apiCall('structure', { tables: this.selectedTables })
-      this.isSnippetResponse = true; this.response = d?.html || ''
-    },
-    async describe() {
-      const d = await this.apiCall('describe', { tables: this.selectedTables })
-      this.isSnippetResponse = false; this.response = d?.html || ''
-    },
-    async showData(isPeer = false, offset = null) {
-      if (offset !== null) this.dataOffset = offset
-      const limitIdFrom = `${this.dataOffset},${this.dataOffset + this.dataLimit}`
-      const d = await this.apiCall('data', { tables: this.selectedTables, limitIdFrom })
-      this.isSnippetResponse = false; this.response = d?.html || ''
-      if (this.selectedTables[0]) this.loadEditorColumns()
-    },
-    prevPage() {
-      if (this.dataOffset >= this.dataLimit) this.showData(false, this.dataOffset - this.dataLimit)
-    },
-    nextPage() {
-      this.showData(false, this.dataOffset + this.dataLimit)
-    },
-    async showIndexes() {
-      const d = await this.apiCall('indexes', { tables: this.selectedTables })
-      this.isSnippetResponse = true; this.response = d?.html || ''
-    },
-    async dropIndexes() {
-      if (!confirm('Drop all indexes from selected tables?')) return
-      const d = await this.apiCall('dropIndexes', { tables: this.selectedTables })
-      this.isSnippetResponse = true; this.response = d?.html || ''
-    },
-    async executeQuery(mode = '') {
-      if (!this.queryString && !mode) return
-      this.loading.query = true
-      try {
-        const d = await this.apiCall('executeQuery', { query: this.queryString, mode, tables: this.selectedTables })
-        this.isSnippetResponse = false; this.response = d?.html || ''
-        if (this.queryString) this.addQueryHistory(this.queryString)
-      } finally { this.loading.query = false }
-    },
-    async columnSearch() {
-      const d = await this.apiCall('columnSearch', { tables: this.selectedTables, column: this.column })
-      this.isSnippetResponse = true; this.response = d?.html || ''
-    },
-    async toString() {
-      const d = await this.apiCall('toString', { tables: this.selectedTables })
-      this.isSnippetResponse = true; this.response = d?.html || ''
-    },
-    async snippets() {
-      const d = await this.apiCall('snippets', { tables: this.selectedTables })
-      this.isSnippetResponse = true; this.response = d?.html || ''
-    },
-    async vue() {
-      const d = await this.apiCall('vue', { tables: this.selectedTables })
-      this.isSnippetResponse = true; this.response = d?.html || ''
-    },
-    async showSizes() {
-      const d = await this.apiCall('showSizes', { tables: this.selectedTables })
-      this.isSnippetResponse = false; this.response = d?.html || ''
-    },
+        // ── Viewer actions ──
+        async showConcept() {
+            const d = await this.apiCall('concept', { tables: this.selectedTables })
+            this.isSnippetResponse = true; this.response = d?.html || ''
+        },
+        async showStructure() {
+            const d = await this.apiCall('structure', { tables: this.selectedTables })
+            this.isSnippetResponse = true; this.response = d?.html || ''
+        },
+        async describe() {
+            const d = await this.apiCall('describe', { tables: this.selectedTables })
+            this.isSnippetResponse = false; this.response = d?.html || ''
+        },
+        async showData(isPeer = false, offset = null) {
+            if (offset !== null) this.dataOffset = offset
+            const limitIdFrom = `${this.dataOffset},${this.dataOffset + this.dataLimit}`
+            const d = await this.apiCall('data', { tables: this.selectedTables, limitIdFrom })
+            this.isSnippetResponse = false; this.response = d?.html || ''
+            if (this.selectedTables[0]) this.loadEditorColumns()
+        },
+        prevPage() {
+            if (this.dataOffset >= this.dataLimit) this.showData(false, this.dataOffset - this.dataLimit)
+        },
+        nextPage() {
+            this.showData(false, this.dataOffset + this.dataLimit)
+        },
+        async showIndexes() {
+            const d = await this.apiCall('indexes', { tables: this.selectedTables })
+            this.isSnippetResponse = true; this.response = d?.html || ''
+        },
+        async dropIndexes() {
+            if (!confirm('Drop all indexes from selected tables?')) return
+            const d = await this.apiCall('dropIndexes', { tables: this.selectedTables })
+            this.isSnippetResponse = true; this.response = d?.html || ''
+        },
+        async executeQuery(mode = '') {
+            if (!this.queryString && !mode) return
+            this.loading.query = true
+            try {
+                const d = await this.apiCall('executeQuery', { query: this.queryString, mode, tables: this.selectedTables })
+                this.isSnippetResponse = false; this.response = d?.html || ''
+                if (this.queryString) this.addQueryHistory(this.queryString)
+            } finally { this.loading.query = false }
+        },
+        async columnSearch() {
+            const d = await this.apiCall('columnSearch', { tables: this.selectedTables, column: this.column })
+            this.isSnippetResponse = true; this.response = d?.html || ''
+        },
+        async toString() {
+            const d = await this.apiCall('toString', { tables: this.selectedTables })
+            this.isSnippetResponse = true; this.response = d?.html || ''
+        },
+        async snippets() {
+            const d = await this.apiCall('snippets', { tables: this.selectedTables })
+            this.isSnippetResponse = true; this.response = d?.html || ''
+        },
+        async vue() {
+            const d = await this.apiCall('vue', { tables: this.selectedTables })
+            this.isSnippetResponse = true; this.response = d?.html || ''
+        },
+        async showSizes() {
+            const d = await this.apiCall('showSizes', { tables: this.selectedTables })
+            this.isSnippetResponse = false; this.response = d?.html || ''
+        },
 
-    // ── Operations ──
-    async truncateTables() {
-      const d = await this.apiCall('truncateTables', { tables: this.selectedTables, dryRun: this.dryRun.tableOperations, confirmation: this.confirmation.tableOperations })
-      this.isSnippetResponse = false; this.response = d?.html || ''
-    },
-    async dropTables() {
-      const d = await this.apiCall('dropTables', { tables: this.selectedTables, dryRun: this.dryRun.tableOperations, confirmation: this.confirmation.tableOperations })
-      this.isSnippetResponse = false; this.response = d?.html || ''
-    },
-    async renameTable() {
-      if (!this.selectedTables[0]) return alert('Select one table')
-      const d = await this.apiCall('renameTable', { table: this.selectedTables[0], newTableName: this.newTableName, confirmation: this.confirmation.renameTable })
-      this.response = d?.html || ''
-    },
-    async cloneTable() {
-      if (!this.selectedTables[0]) return alert('Select one table')
-      const d = await this.apiCall('cloneTable', { table: this.selectedTables[0], newTableName: this.newTableName, confirmation: this.confirmation.renameTable })
-      this.response = d?.html || ''
-    },
-    async alterColumn() {
-      const d = await this.apiCall('alterColumn', { tables: this.selectedTables, column: this.column, newColumnName: this.newColumnName, newColumnType: this.newColumnType, dryRun: this.dryRun.columnOperations })
-      this.isSnippetResponse = true; this.response = d?.html || ''
-    },
-    async dropColumn() {
-      const d = await this.apiCall('dropColumn', { tables: this.selectedTables, column: this.column, dryRun: this.dryRun.columnOperations, confirmation: this.confirmation.columnOperations })
-      this.isSnippetResponse = true; this.response = d?.html || ''
-    },
-    async insertAfterColumn() {
-      const d = await this.apiCall('insertAfterColumn', { tables: this.selectedTables, column: this.column, newColumnName: this.newColumnName, newColumnType: this.newColumnType, dryRun: this.dryRun.columnOperations })
-      this.isSnippetResponse = true; this.response = d?.html || ''
-    },
-    async insertFakeData() {
-      if (!this.selectedTables[0]) return alert('Select a table')
-      const d = await this.apiCall('insertFakeData', { table: this.selectedTables[0], confirmation: this.confirmation.tableOperations })
-      this.response = d?.html || ''
-    },
-    async executeBuilderQuery() {
-      if (!this.selectedTables[0]) return alert('Select a table')
-      const t = this.selectedTables[0]
-      const { operation, setColumn, setValue, whereColumn, whereValue } = this.queryBuilder
-      let q = ''
-      if (operation === 'select') q = `SELECT * FROM \`${t}\` WHERE ${whereColumn} = '${whereValue}'`
-      else if (operation === 'update') q = `UPDATE \`${t}\` SET ${setColumn} = '${setValue}' WHERE ${whereColumn} = '${whereValue}'`
-      else q = `DELETE FROM \`${t}\` WHERE ${whereColumn} = '${whereValue}'`
-      this.queryString = q
-      await this.executeQuery()
-    },
+        // ── Operations ──
+        async truncateTables() {
+            const d = await this.apiCall('truncateTables', { tables: this.selectedTables, dryRun: this.dryRun.tableOperations, confirmation: this.confirmation.tableOperations })
+            this.isSnippetResponse = false; this.response = d?.html || ''
+        },
+        async dropTables() {
+            const d = await this.apiCall('dropTables', { tables: this.selectedTables, dryRun: this.dryRun.tableOperations, confirmation: this.confirmation.tableOperations })
+            this.isSnippetResponse = false; this.response = d?.html || ''
+        },
+        async renameTable() {
+            if (!this.selectedTables[0]) return alert('Select one table')
+            const d = await this.apiCall('renameTable', { table: this.selectedTables[0], newTableName: this.newTableName, confirmation: this.confirmation.renameTable })
+            this.response = d?.html || ''
+        },
+        async cloneTable() {
+            if (!this.selectedTables[0]) return alert('Select one table')
+            const d = await this.apiCall('cloneTable', { table: this.selectedTables[0], newTableName: this.newTableName, confirmation: this.confirmation.renameTable })
+            this.response = d?.html || ''
+        },
+        async alterColumn() {
+            const d = await this.apiCall('alterColumn', { tables: this.selectedTables, column: this.column, newColumnName: this.newColumnName, newColumnType: this.newColumnType, dryRun: this.dryRun.columnOperations })
+            this.isSnippetResponse = true; this.response = d?.html || ''
+        },
+        async dropColumn() {
+            const d = await this.apiCall('dropColumn', { tables: this.selectedTables, column: this.column, dryRun: this.dryRun.columnOperations, confirmation: this.confirmation.columnOperations })
+            this.isSnippetResponse = true; this.response = d?.html || ''
+        },
+        async insertAfterColumn() {
+            const d = await this.apiCall('insertAfterColumn', { tables: this.selectedTables, column: this.column, newColumnName: this.newColumnName, newColumnType: this.newColumnType, dryRun: this.dryRun.columnOperations })
+            this.isSnippetResponse = true; this.response = d?.html || ''
+        },
+        async insertFakeData() {
+            if (!this.selectedTables[0]) return alert('Select a table')
+            const d = await this.apiCall('insertFakeData', { table: this.selectedTables[0], confirmation: this.confirmation.tableOperations })
+            this.response = d?.html || ''
+        },
+        async executeBuilderQuery() {
+            if (!this.selectedTables[0]) return alert('Select a table')
+            const t = this.selectedTables[0]
+            const { operation, setColumn, setValue, whereColumn, whereValue } = this.queryBuilder
+            let q = ''
+            if (operation === 'select') q = `SELECT * FROM \`${t}\` WHERE ${whereColumn} = '${whereValue}'`
+            else if (operation === 'update') q = `UPDATE \`${t}\` SET ${setColumn} = '${setValue}' WHERE ${whereColumn} = '${whereValue}'`
+            else q = `DELETE FROM \`${t}\` WHERE ${whereColumn} = '${whereValue}'`
+            this.queryString = q
+            await this.executeQuery()
+        },
 
-    // ── Database ops ──
-    async getPeerPatch() {
-      const d = await this.apiCall('getPeerPatch', { tables: this.selectedTables, peerConnection: parseInt(this.selectedPeerConnection) || 0 })
-      this.isSnippetResponse = true; this.response = d?.html || ''
-    },
-    async copyTables() {
-      const d = await this.apiCall('copyTables', { tables: this.selectedTables, peerConnection: parseInt(this.selectedPeerConnection) || 0, dryRun: this.dryRun.databaseOperations, confirmation: this.confirmation.databaseOperations })
-      this.isSnippetResponse = true; this.response = d?.html || ''
-    },
-    async cloneDatabase() {
-      const d = await this.apiCall('cloneDatabase', { peerConnection: parseInt(this.selectedPeerConnection) || 0, dryRun: this.dryRun.databaseOperations, confirmation: this.confirmation.databaseOperations })
-      this.isSnippetResponse = false; this.response = d?.html || ''
-    },
+        // ── Database ops ──
+        async getPeerPatch() {
+            const d = await this.apiCall('getPeerPatch', { tables: this.selectedTables, peerConnection: parseInt(this.selectedPeerConnection) || 0 })
+            this.isSnippetResponse = true; this.response = d?.html || ''
+        },
+        async copyTables() {
+            const d = await this.apiCall('copyTables', { tables: this.selectedTables, peerConnection: parseInt(this.selectedPeerConnection) || 0, dryRun: this.dryRun.databaseOperations, confirmation: this.confirmation.databaseOperations })
+            this.isSnippetResponse = true; this.response = d?.html || ''
+        },
+        async cloneDatabase() {
+            const d = await this.apiCall('cloneDatabase', { peerConnection: parseInt(this.selectedPeerConnection) || 0, dryRun: this.dryRun.databaseOperations, confirmation: this.confirmation.databaseOperations })
+            this.isSnippetResponse = false; this.response = d?.html || ''
+        },
 
-    // ── Exporter ──
-    async exportQuickReportData() {
-      this.loading.export = true
-      try {
-        const resp = await axios({
-          method: 'post', url: '/api/exportQuickReportData',
-          responseType: 'blob',
-          headers: this.authHeader,
-          data: {
-            query: this.quickReportQueryString,
-            columns: this.quickReportColumns,
-            columnTitles: this.quickReportColumnTitles,
-            decimalColumns: this.quickReportDecimalColumns,
-            textColumns: this.quickReportTextColumns,
-            summableColumns: this.quickReportSummableColumns,
-            alignCenterColumns: this.quickReportAlignCenterColumns,
-            sheetSeparationColumn: this.quickReportSheetSeparationColumn,
-            columnWidths: this.quickReportColumnWidths,
-          }
-        })
-        const url = URL.createObjectURL(resp.data)
-        const a = document.createElement('a'); a.href = url; a.download = 'DATA.xlsx'; a.click()
-        URL.revokeObjectURL(url)
-        this.saveReportHistory()
-      } finally { this.loading.export = false }
-    },
-    loadReport(r) {
-      Object.assign(this, {
-        quickReportQueryString: r.query || '',
-        quickReportColumns: r.columns || '',
-        quickReportColumnTitles: r.columnTitles || '',
-        quickReportDecimalColumns: r.decimalColumns || '',
-        quickReportTextColumns: r.textColumns || '',
-        quickReportSummableColumns: r.summableColumns || '',
-        quickReportAlignCenterColumns: r.alignCenterColumns || '',
-        quickReportSheetSeparationColumn: r.sheetSeparationColumn || '',
-        quickReportColumnWidths: r.columnWidths || '',
-      })
-    },
+        // ── Exporter ──
+        async exportQuickReportData() {
+            this.loading.export = true
+            try {
+                const resp = await axios({
+                    method: 'post', url: '/api/exportQuickReportData',
+                    responseType: 'blob',
+                    headers: this.authHeader,
+                    data: {
+                        query: this.quickReportQueryString,
+                        columns: this.quickReportColumns,
+                        columnTitles: this.quickReportColumnTitles,
+                        decimalColumns: this.quickReportDecimalColumns,
+                        textColumns: this.quickReportTextColumns,
+                        summableColumns: this.quickReportSummableColumns,
+                        alignCenterColumns: this.quickReportAlignCenterColumns,
+                        sheetSeparationColumn: this.quickReportSheetSeparationColumn,
+                        columnWidths: this.quickReportColumnWidths,
+                    }
+                })
+                const url = URL.createObjectURL(resp.data)
+                const a = document.createElement('a'); a.href = url; a.download = 'DATA.xlsx'; a.click()
+                URL.revokeObjectURL(url)
+                this.saveReportHistory()
+            } finally { this.loading.export = false }
+        },
+        loadReport(r) {
+            Object.assign(this, {
+                quickReportQueryString: r.query || '',
+                quickReportColumns: r.columns || '',
+                quickReportColumnTitles: r.columnTitles || '',
+                quickReportDecimalColumns: r.decimalColumns || '',
+                quickReportTextColumns: r.textColumns || '',
+                quickReportSummableColumns: r.summableColumns || '',
+                quickReportAlignCenterColumns: r.alignCenterColumns || '',
+                quickReportSheetSeparationColumn: r.sheetSeparationColumn || '',
+                quickReportColumnWidths: r.columnWidths || '',
+            })
+        },
 
-    // ── Importer ──
-    async importSqlFile() {
-      this.loading.import = true
-      try {
-        const d = await this.apiCall('importSqlFile', { path: this.importSqlFilePath })
-        this.isSnippetResponse = false; this.response = d?.html || ''
-      } finally { this.loading.import = false }
-    },
+        // ── Importer ──
+        async importSqlFile() {
+            this.loading.import = true
+            try {
+                const d = await this.apiCall('importSqlFile', { path: this.importSqlFilePath })
+                this.isSnippetResponse = false; this.response = d?.html || ''
+            } finally { this.loading.import = false }
+        },
 
-    // ── AI ──
-    async sendChatMessage() {
-      if (!this.ai.message) return
-      this.loading.ai = true
-      try {
-        const d = await this.apiCall('sendChatMessage', { tables: this.selectedTables, message: this.ai.message })
-        this.isSnippetResponse = false; this.response = d?.html || ''
-      } finally { this.loading.ai = false }
-    },
-    async generateCompactFormLayout() {
-      this.loading.ai = true
-      try {
-        const d = await this.apiCall('generateCompactFormLayout', { tables: this.selectedTables, dryRun: this.dryRun.gptOperation })
-        this.isSnippetResponse = true; this.response = d?.html || ''
-      } finally { this.loading.ai = false }
-    },
+        // ── AI ──
+        async sendChatMessage() {
+            if (!this.ai.message) return
+            this.loading.ai = true
+            try {
+                const d = await this.apiCall('sendChatMessage', { tables: this.selectedTables, message: this.ai.message })
+                this.isSnippetResponse = false; this.response = d?.html || ''
+            } finally { this.loading.ai = false }
+        },
+        async generateCompactFormLayout() {
+            this.loading.ai = true
+            try {
+                const d = await this.apiCall('generateCompactFormLayout', { tables: this.selectedTables, dryRun: this.dryRun.gptOperation })
+                this.isSnippetResponse = true; this.response = d?.html || ''
+            } finally { this.loading.ai = false }
+        },
 
-    // ── Editor form ──
-    async loadEditorColumns() {
-      if (!this.selectedTables[0]) return
-      const d = await this.apiCall('getTableColumns', { table: this.selectedTables[0] })
-      if (d?.columns) {
-        this.editorColumns = d.columns
-        this.editorData = {}
-        d.columns.forEach(c => this.editorData[c] = '')
-      }
-    },
-    async insertTableRow() {
-      if (!this.selectedTables[0]) return
-      const d = await this.apiCall('insertTableRow', { table: this.selectedTables[0], data: this.editorData })
-      if (d?.success) {
-        this.response = `Saved. ID = ${d.id}`
-        this.editorData = {}
-        this.editorColumns.forEach(c => this.editorData[c] = '')
-        await this.showData()
-      }
-    },
+        // ── Editor form ──
+        async loadEditorColumns() {
+            if (!this.selectedTables[0]) return
+            const d = await this.apiCall('getTableColumns', { table: this.selectedTables[0] })
+            if (d?.columns) {
+                this.editorColumns = d.columns
+                this.editorData = {}
+                d.columns.forEach(c => this.editorData[c] = '')
+            }
+        },
+        async insertTableRow() {
+            if (!this.selectedTables[0]) return
+            const d = await this.apiCall('insertTableRow', { table: this.selectedTables[0], data: this.editorData })
+            if (d?.success) {
+                this.response = `Saved. ID = ${d.id}`
+                this.editorData = {}
+                this.editorColumns.forEach(c => this.editorData[c] = '')
+                await this.showData()
+            }
+        },
 
-    // ── Inline cell editing ──
-    onResponsePaneClick(e) {
-      // Handle sortable column header clicks
-      const th = e.target.closest('th.sortable')
-      if (th) {
-        const col = th.dataset.col
-        if (!col) return
-        const table = th.closest('table')
-        if (!table) return
-        this._sortTableDom(table, col)
-        return
-      }
+        // ── Inline cell editing ──
+        onResponsePaneClick(e) {
+            // Handle sortable column header clicks
+            const th = e.target.closest('th.sortable')
+            if (th) {
+                const col = th.dataset.col
+                if (!col) return
+                const table = th.closest('table')
+                if (!table) return
+                this._sortTableDom(table, col)
+                return
+            }
 
-      // Handle inline cell editing
-      const td = e.target.closest('td.editable-cell')
-      if (!td) return
+            // Handle inline cell editing
+            const td = e.target.closest('td.editable-cell')
+            if (!td) return
 
-      const table = td.dataset.table
-      const column = td.dataset.column
-      const uuid = td.dataset.uuid
-      if (!table || !column) return
+            const table = td.dataset.table
+            const column = td.dataset.column
+            const uuid = td.dataset.uuid
+            if (!table || !column) return
 
-      const editor = document.getElementById('inline-editor')
-      const rect = td.getBoundingClientRect()
-      editor.value = td.innerText
-      editor.style.left = rect.left + 'px'
-      editor.style.top = rect.top + 'px'
-      editor.style.width = rect.width + 'px'
-      editor.style.height = rect.height + 'px'
-      editor.style.display = 'block'
-      editor.focus()
-      editor.select()
+            const editor = document.getElementById('inline-editor')
+            const rect = td.getBoundingClientRect()
+            editor.value = td.innerText
+            editor.style.left = rect.left + 'px'
+            editor.style.top = rect.top + 'px'
+            editor.style.width = rect.width + 'px'
+            editor.style.height = rect.height + 'px'
+            editor.style.display = 'block'
+            editor.focus()
+            editor.select()
 
-      this._inlineEdit = { table, column, uuid, cell: td }
-    },
-    _sortTableDom(table, col) {
-      // Find column index
-      const headers = Array.from(table.querySelectorAll('thead th'))
-      const colIndex = headers.findIndex(h => h.dataset.col === col)
-      if (colIndex < 0) return
+            this._inlineEdit = { table, column, uuid, cell: td }
+        },
+        _sortTableDom(table, col) {
+            const headers = Array.from(table.querySelectorAll('thead th'))
+            const colIndex = headers.findIndex(h => h.dataset.col === col)
+            if (colIndex < 0) return
 
-      // Determine sort direction
-      const currentDir = table.dataset.sortDir === 'asc' && table.dataset.sortCol === col ? 'desc' : 'asc'
-      table.dataset.sortDir = currentDir
-      table.dataset.sortCol = col
+            const currentDir = table.dataset.sortDir === 'asc' && table.dataset.sortCol === col ? 'desc' : 'asc'
+            table.dataset.sortDir = currentDir
+            table.dataset.sortCol = col
 
-      // Update arrow indicators
-      headers.forEach(h => {
-        const arrow = h.querySelector('.sort-arrow')
-        if (arrow) arrow.textContent = h.dataset.col === col ? (currentDir === 'asc' ? ' ▲' : ' ▼') : ' ⇅'
-        h.classList.toggle('sort-active', h.dataset.col === col)
-      })
+            // SVG sort icons (12x12)
+            const svgAsc = '<svg class="octicon" viewBox="0 0 16 16" width="12" height="12"><path d="m12.927 2.573 3 3A.25.25 0 0 1 15.75 6H13.5v6.75a.75.75 0 0 1-1.5 0V6H9.75a.25.25 0 0 1-.177-.427l3-3a.25.25 0 0 1 .354 0ZM0 12.25a.75.75 0 0 1 .75-.75h7.5a.75.75 0 0 1 0 1.5H.75a.75.75 0 0 1-.75-.75Zm0-4a.75.75 0 0 1 .75-.75h4.5a.75.75 0 0 1 0 1.5H.75A.75.75 0 0 1 0 8.25Zm0-4a.75.75 0 0 1 .75-.75h2.5a.75.75 0 0 1 0 1.5H.75A.75.75 0 0 1 0 4.25Z"></path></svg>'
+            const svgDesc = '<svg class="octicon" viewBox="0 0 16 16" width="12" height="12"><path d="M0 4.25a.75.75 0 0 1 .75-.75h7.5a.75.75 0 0 1 0 1.5H.75A.75.75 0 0 1 0 4.25Zm0 4a.75.75 0 0 1 .75-.75h4.5a.75.75 0 0 1 0 1.5H.75A.75.75 0 0 1 0 8.25Zm0 4a.75.75 0 0 1 .75-.75h2.5a.75.75 0 0 1 0 1.5H.75a.75.75 0 0 1-.75-.75ZM13.5 10h2.25a.25.25 0 0 1 .177.427l-3 3a.25.25 0 0 1-.354 0l-3-3A.25.25 0 0 1 9.75 10H12V3.75a.75.75 0 0 1 1.5 0V10Z"></path></svg>'
+            const svgDefault = '<svg class="octicon" viewBox="0 0 16 16" width="12" height="12"><path d="M5.22 14.78a.75.75 0 0 0 1.06-1.06L4.56 12h8.69a.75.75 0 0 0 0-1.5H4.56l1.72-1.72a.75.75 0 0 0-1.06-1.06l-3 3a.75.75 0 0 0 0 1.06l3 3Zm5.56-6.5a.75.75 0 1 1-1.06-1.06l1.72-1.72H2.75a.75.75 0 0 1 0-1.5h8.69L9.72 2.28a.75.75 0 0 1 1.06-1.06l3 3a.75.75 0 0 1 0 1.06l-3 3Z"></path></svg>'
 
-      // Sort tbody rows
-      const tbody = table.querySelector('tbody')
-      if (!tbody) return
-      const rows = Array.from(tbody.querySelectorAll('tr'))
-      rows.sort((a, b) => {
-        const aVal = a.cells[colIndex]?.textContent?.trim() ?? ''
-        const bVal = b.cells[colIndex]?.textContent?.trim() ?? ''
-        const aNum = parseFloat(aVal.replace(/,/g, ''))
-        const bNum = parseFloat(bVal.replace(/,/g, ''))
-        let cmp = (!isNaN(aNum) && !isNaN(bNum)) ? aNum - bNum : aVal.localeCompare(bVal)
-        return currentDir === 'asc' ? cmp : -cmp
-      })
-      rows.forEach(r => tbody.appendChild(r))
-    },
+            headers.forEach(h => {
+                const arrow = h.querySelector('.sort-arrow')
+                if (arrow) {
+                    arrow.innerHTML = h.dataset.col === col
+                        ? (currentDir === 'asc' ? svgAsc : svgDesc)
+                        : svgDefault
+                }
+                h.classList.toggle('sort-active', h.dataset.col === col)
+            })
 
-    async commitInlineEdit() {
-      const { table, column, uuid, cell } = this._inlineEdit
-      const editor = document.getElementById('inline-editor')
-      editor.style.display = 'none'
-      if (!table || !cell) return
+            // Sort tbody rows (unchanged logic)
+            const tbody = table.querySelector('tbody')
+            if (!tbody) return
+            const rows = Array.from(tbody.querySelectorAll('tr'))
+            rows.sort((a, b) => {
+                const aVal = a.cells[colIndex]?.textContent?.trim() ?? ''
+                const bVal = b.cells[colIndex]?.textContent?.trim() ?? ''
+                const aNum = parseFloat(aVal.replace(/,/g, ''))
+                const bNum = parseFloat(bVal.replace(/,/g, ''))
+                let cmp = (!isNaN(aNum) && !isNaN(bNum)) ? aNum - bNum : aVal.localeCompare(bVal)
+                return currentDir === 'asc' ? cmp : -cmp
+            })
+            rows.forEach(r => tbody.appendChild(r))
+        },
 
-      const newValue = editor.value
-      if (newValue === cell.innerText) return
+        async commitInlineEdit() {
+            const { table, column, uuid, cell } = this._inlineEdit
+            const editor = document.getElementById('inline-editor')
+            editor.style.display = 'none'
+            if (!table || !cell) return
 
-      // Build an UPDATE via executeQuery
-      const q = `UPDATE \`${table}\` SET \`${column}\` = '${newValue.replace(/'/g, "\\'")}' WHERE UUID = '${uuid}'`
-      await this.apiCall('executeQuery', { query: q + '//Confirmed', tables: [table] })
-      cell.innerText = newValue
-    },
-    cancelInlineEdit() {
-      document.getElementById('inline-editor').style.display = 'none'
-    },
+            const newValue = editor.value
+            if (newValue === cell.innerText) return
 
-    // ── Theme toggle ──
-    toggleTheme() {
-      this.isDark = !this.isDark
-    },
+            // Build an UPDATE via executeQuery
+            const q = `UPDATE \`${table}\` SET \`${column}\` = '${newValue.replace(/'/g, "\\'")}' WHERE UUID = '${uuid}'`
+            await this.apiCall('executeQuery', { query: q + '//Confirmed', tables: [table] })
+            cell.innerText = newValue
+        },
+        cancelInlineEdit() {
+            document.getElementById('inline-editor').style.display = 'none'
+        },
 
-    // ── Column sort ──
-    sortTable(col) {
-      if (this.sortCol === col) {
-        this.sortDir = this.sortDir === 'asc' ? 'desc' : 'asc'
-      } else {
-        this.sortCol = col
-        this.sortDir = 'asc'
-      }
-    },
+        // ── Theme toggle ──
+        toggleTheme() {
+            this.isDark = !this.isDark
+        },
 
-    // ── User management ──
-    async loadUsers() {
-      const d = await this.apiCall('users', {}, 'get')
-      if (d?.users) this.userList = d.users
-    },
-    startAddUser() {
-      this.userForm = { username: '', password: '', confirmPassword: '' }
-      this.userEditMode = 'add'
-      this.userMessage = ''
-    },
-    startChangePassword(username) {
-      this.userForm = { username, password: '', confirmPassword: '' }
-      this.userEditMode = 'password'
-      this.userMessage = ''
-    },
-    cancelUserEdit() {
-      this.userEditMode = ''
-      this.userMessage = ''
-    },
-    async saveUser() {
-      if (this.userForm.password !== this.userForm.confirmPassword) {
-        this.userMessage = '❌ Passwords do not match'
-        return
-      }
-      if (!this.userForm.password) {
-        this.userMessage = '❌ Password cannot be empty'
-        return
-      }
-      if (this.userEditMode === 'add' && !this.userForm.username.trim()) {
-        this.userMessage = '❌ Username cannot be empty'
-        return
-      }
-      try {
-        if (this.userEditMode === 'add') {
-          const d = await this.apiCall('users/add', {
-            username: this.userForm.username.trim(),
-            password: this.userForm.password
-          })
-          if (d?.success) {
-            this.userList = d.users
-            this.userMessage = `✅ User "${this.userForm.username}" created`
+        // ── Column sort ──
+        sortTable(col) {
+            if (this.sortCol === col) {
+                this.sortDir = this.sortDir === 'asc' ? 'desc' : 'asc'
+            } else {
+                this.sortCol = col
+                this.sortDir = 'asc'
+            }
+        },
+
+        // ── User management ──
+        async loadUsers() {
+            const d = await this.apiCall('users', {}, 'get')
+            if (d?.users) this.userList = d.users
+        },
+        startAddUser() {
             this.userForm = { username: '', password: '', confirmPassword: '' }
+            this.userEditMode = 'add'
+            this.userMessage = null
+        },
+        startChangePassword(username) {
+            this.userForm = { username, password: '', confirmPassword: '' }
+            this.userEditMode = 'password'
+            this.userMessage = null
+        },
+        cancelUserEdit() {
             this.userEditMode = ''
-          } else {
-            this.userMessage = '❌ ' + (d?.message || 'Failed')
-          }
-        } else {
-          const d = await this.apiCall('users/password', {
-            username: this.userForm.username,
-            new_password: this.userForm.password
-          })
-          if (d?.success) {
-            this.userMessage = '✅ ' + d.message
-            this.userForm = { ...this.userForm, password: '', confirmPassword: '' }
-            this.userEditMode = ''
-          } else {
-            this.userMessage = '❌ ' + (d?.message || 'Failed')
-          }
+            this.userMessage = null
+        },
+        async saveUser() {
+            if (this.userForm.password !== this.userForm.confirmPassword) {
+                this.userMessage = { type: 'error', text: 'Passwords do not match' }
+                return
+            }
+            if (!this.userForm.password) {
+                this.userMessage = { type: 'error', text: 'Password cannot be empty' }
+                return
+            }
+            if (this.userEditMode === 'add' && !this.userForm.username.trim()) {
+                this.userMessage = { type: 'error', text: 'Username cannot be empty' }
+                return
+            }
+            try {
+                if (this.userEditMode === 'add') {
+                    const d = await this.apiCall('users/add', {
+                        username: this.userForm.username.trim(),
+                        password: this.userForm.password
+                    })
+                    if (d?.success) {
+                        this.userList = d.users
+                        this.userMessage = { type: 'success', text: `User "${this.userForm.username}" created` }
+                        this.userForm = { username: '', password: '', confirmPassword: '' }
+                        this.userEditMode = ''
+                    } else {
+                        this.userMessage = { type: 'error', text: d?.message || 'Failed' }
+                    }
+                } else {
+                    const d = await this.apiCall('users/password', {
+                        username: this.userForm.username,
+                        new_password: this.userForm.password
+                    })
+                    if (d?.success) {
+                        this.userMessage = { type: 'success', text: d.message }
+                        this.userForm = { ...this.userForm, password: '', confirmPassword: '' }
+                        this.userEditMode = ''
+                    } else {
+                        this.userMessage = { type: 'error', text: d?.message || 'Failed' }
+                    }
+                }
+            } catch(e) {
+                this.userMessage = { type: 'error', text: 'Request failed' }
+            }
+        },
+        async deleteUser(username) {
+            if (!confirm(`Delete user "${username}"?`)) return
+            const d = await this.apiCall('users/delete', { username })
+            if (d?.success) {
+                this.userList = d.users
+                if (this.userForm.username === username) this.cancelUserEdit()
+            }
+        },
+
+        // ── Settings — Connection CRUD ──
+        async loadFullConnections() {
+            const d = await this.apiCall('connections/full', {}, 'get')
+            if (d?.connections) this.fullConnections = d.connections
+        },
+        editConnection(i) {
+            const c = this.fullConnections[i]
+            this.connForm = { ...c, password: '' }
+            this.connEditIndex = i
+        },
+        resetConnForm() {
+            this.connForm = { name: '', type: 'mysql', server: 'localhost', port: 3306, database: '', user: '', password: '' }
+            this.connEditIndex = -1
+            this.connTestResult = null
+        },
+        async saveConnection() {
+            if (this.connEditIndex >= 0) {
+                await this.apiCall('connections/update', { index: this.connEditIndex, ...this.connForm })
+            } else {
+                await this.apiCall('connections/add', { ...this.connForm })
+            }
+            await this.loadFullConnections()
+            await this.loadConnections()
+            this.resetConnForm()
+        },
+        async deleteConnection(i) {
+            if (!confirm(`Delete connection "${this.fullConnections[i].name}"?`)) return
+            await this.apiCall('connections/delete', { index: i })
+            await this.loadFullConnections()
+            await this.loadConnections()
+            this.resetConnForm()
+        },
+        async testConnectionForm() {
+            // Save first so the index is valid, then test
+            const saveBody = this.connEditIndex >= 0
+                ? { index: this.connEditIndex, ...this.connForm }
+                : { ...this.connForm }
+            // For an unsaved connection, temporarily add it
+            let testIndex = this.connEditIndex
+            if (testIndex < 0) {
+                const r = await this.apiCall('connections/add', { ...this.connForm })
+                testIndex = r?.index ?? 0
+            }
+            const d = await this.apiCall('testConnection', { connection: testIndex })
+            this.connTestResult = d?.success
+                ? { type: 'success', text: d.message }
+                : { type: 'error', text: `${d.message}${d.diagnostics?.hint ? '\nHint: ' + d.diagnostics.hint : ''}` }
+        },
+
+        // ── Query autocomplete & history ──
+        handleQueryInput() {
+            const v = this.queryString.toLowerCase()
+            if (v.length < 2) { this.showQuerySuggestions = false; return }
+            const words = new Set([
+                ...this.tables.map(t => t.table),
+                ...this.availColumnNames,
+                'SELECT * FROM', 'WHERE', 'ORDER BY', 'GROUP BY', 'LIMIT',
+                'LEFT JOIN', 'INNER JOIN', 'ON', 'AND', 'OR', 'LIKE', 'IN',
+            ])
+            const last = v.split(/\s+/).pop()
+            this.querySuggestions = [...words].filter(w => w.toLowerCase().startsWith(last) && w.toLowerCase() !== last).slice(0, 12)
+            this.showQuerySuggestions = this.querySuggestions.length > 0
+            this.selectedQuerySuggestionIndex = -1
+        },
+        selectQuerySuggestion(s) {
+            const parts = this.queryString.split(/\s+/)
+            parts[parts.length - 1] = s
+            this.queryString = parts.join(' ') + ' '
+            this.showQuerySuggestions = false
+        },
+        handleQueryArrowUp() {
+            if (this.selectedQuerySuggestionIndex > 0) this.selectedQuerySuggestionIndex--
+        },
+        handleQueryArrowDown() {
+            if (this.selectedQuerySuggestionIndex < this.querySuggestions.length - 1) this.selectedQuerySuggestionIndex++
+        },
+        onClickQueryHistory(q) {
+            this.queryString = q
+            this.showQueryHistory = false
+        },
+        addQueryHistory(q) {
+            this.queryHistory = [q, ...this.queryHistory.filter(x => x !== q)].slice(0, 50)
+            this.saveQueryHistory()
+        },
+        saveQueryHistory() { localStorage.setItem('dbviewer_queryHistory', JSON.stringify(this.queryHistory)) },
+        saveReportHistory() {
+            const r = {
+                query: this.quickReportQueryString,
+                columns: this.quickReportColumns,
+                columnTitles: this.quickReportColumnTitles,
+                decimalColumns: this.quickReportDecimalColumns,
+                textColumns: this.quickReportTextColumns,
+                summableColumns: this.quickReportSummableColumns,
+                alignCenterColumns: this.quickReportAlignCenterColumns,
+                sheetSeparationColumn: this.quickReportSheetSeparationColumn,
+                columnWidths: this.quickReportColumnWidths,
+            }
+            if (!r.query) return
+            this.reportHistory = [r, ...this.reportHistory.filter(x => x.query !== r.query)].slice(0, 20)
+            localStorage.setItem('dbviewer_reportHistory', JSON.stringify(this.reportHistory))
+        },
+
+        // ── Column autocomplete ──
+        handleColumnInput() { this.showColumnSuggestions = true },
+        handleColumnFocus() {
+            if (this.availColumnNames.length) this.showColumnSuggestions = true
+        },
+        hideColumnSuggestions() { setTimeout(() => this.showColumnSuggestions = false, 150) },
+        selectColumnName(n) { this.column = n; this.showColumnSuggestions = false },
+    },
+    watch: {
+        activeView(val) { localStorage.setItem('dbviewer_activeView', val) },
+        isDark(val) {
+            document.documentElement.classList.toggle('dark', val)
+            document.documentElement.classList.toggle('light', !val)
+            localStorage.setItem('dbviewer_theme', val ? 'dark' : 'light')
+        },
+        // Port auto-fill when connection type changes
+        'connForm.type'(val) {
+            const defaults = { mysql: 3306, postgres: 5432, mssql: 1433, sqlite: 0 }
+            if (defaults[val] !== undefined) this.connForm.port = defaults[val]
         }
-      } catch(e) {
-        this.userMessage = '❌ Request failed'
-      }
     },
-    async deleteUser(username) {
-      if (!confirm(`Delete user "${username}"?`)) return
-      const d = await this.apiCall('users/delete', { username })
-      if (d?.success) {
-        this.userList = d.users
-        if (this.userForm.username === username) this.cancelUserEdit()
-      }
-    },
-
-    // ── Settings — Connection CRUD ──
-    async loadFullConnections() {
-      const d = await this.apiCall('connections/full', {}, 'get')
-      if (d?.connections) this.fullConnections = d.connections
-    },
-    editConnection(i) {
-      const c = this.fullConnections[i]
-      this.connForm = { ...c, password: '' }
-      this.connEditIndex = i
-    },
-    resetConnForm() {
-      this.connForm = { name: '', type: 'mysql', server: 'localhost', port: 3306, database: '', user: '', password: '' }
-      this.connEditIndex = -1
-      this.connTestResult = ''
-    },
-    async saveConnection() {
-      if (this.connEditIndex >= 0) {
-        await this.apiCall('connections/update', { index: this.connEditIndex, ...this.connForm })
-      } else {
-        await this.apiCall('connections/add', { ...this.connForm })
-      }
-      await this.loadFullConnections()
-      await this.loadConnections()
-      this.resetConnForm()
-    },
-    async deleteConnection(i) {
-      if (!confirm(`Delete connection "${this.fullConnections[i].name}"?`)) return
-      await this.apiCall('connections/delete', { index: i })
-      await this.loadFullConnections()
-      await this.loadConnections()
-      this.resetConnForm()
-    },
-    async testConnectionForm() {
-      // Save first so the index is valid, then test
-      const saveBody = this.connEditIndex >= 0
-        ? { index: this.connEditIndex, ...this.connForm }
-        : { ...this.connForm }
-      // For an unsaved connection, temporarily add it
-      let testIndex = this.connEditIndex
-      if (testIndex < 0) {
-        const r = await this.apiCall('connections/add', { ...this.connForm })
-        testIndex = r?.index ?? 0
-      }
-      const d = await this.apiCall('testConnection', { connection: testIndex })
-      this.connTestResult = d?.success
-        ? `✅ ${d.message}`
-        : `❌ ${d.message}${d.diagnostics?.hint ? '\nHint: ' + d.diagnostics.hint : ''}`
-    },
-
-    // ── Query autocomplete & history ──
-    handleQueryInput() {
-      const v = this.queryString.toLowerCase()
-      if (v.length < 2) { this.showQuerySuggestions = false; return }
-      const words = new Set([
-        ...this.tables.map(t => t.table),
-        ...this.availColumnNames,
-        'SELECT * FROM', 'WHERE', 'ORDER BY', 'GROUP BY', 'LIMIT',
-        'LEFT JOIN', 'INNER JOIN', 'ON', 'AND', 'OR', 'LIKE', 'IN',
-      ])
-      const last = v.split(/\s+/).pop()
-      this.querySuggestions = [...words].filter(w => w.toLowerCase().startsWith(last) && w.toLowerCase() !== last).slice(0, 12)
-      this.showQuerySuggestions = this.querySuggestions.length > 0
-      this.selectedQuerySuggestionIndex = -1
-    },
-    selectQuerySuggestion(s) {
-      const parts = this.queryString.split(/\s+/)
-      parts[parts.length - 1] = s
-      this.queryString = parts.join(' ') + ' '
-      this.showQuerySuggestions = false
-    },
-    handleQueryArrowUp() {
-      if (this.selectedQuerySuggestionIndex > 0) this.selectedQuerySuggestionIndex--
-    },
-    handleQueryArrowDown() {
-      if (this.selectedQuerySuggestionIndex < this.querySuggestions.length - 1) this.selectedQuerySuggestionIndex++
-    },
-    onClickQueryHistory(q) {
-      this.queryString = q
-      this.showQueryHistory = false
-    },
-    addQueryHistory(q) {
-      this.queryHistory = [q, ...this.queryHistory.filter(x => x !== q)].slice(0, 50)
-      this.saveQueryHistory()
-    },
-    saveQueryHistory() { localStorage.setItem('dbviewer_queryHistory', JSON.stringify(this.queryHistory)) },
-    saveReportHistory() {
-      const r = {
-        query: this.quickReportQueryString,
-        columns: this.quickReportColumns,
-        columnTitles: this.quickReportColumnTitles,
-        decimalColumns: this.quickReportDecimalColumns,
-        textColumns: this.quickReportTextColumns,
-        summableColumns: this.quickReportSummableColumns,
-        alignCenterColumns: this.quickReportAlignCenterColumns,
-        sheetSeparationColumn: this.quickReportSheetSeparationColumn,
-        columnWidths: this.quickReportColumnWidths,
-      }
-      if (!r.query) return
-      this.reportHistory = [r, ...this.reportHistory.filter(x => x.query !== r.query)].slice(0, 20)
-      localStorage.setItem('dbviewer_reportHistory', JSON.stringify(this.reportHistory))
-    },
-
-    // ── Column autocomplete ──
-    handleColumnInput() { this.showColumnSuggestions = true },
-    handleColumnFocus() {
-      if (this.availColumnNames.length) this.showColumnSuggestions = true
-    },
-    hideColumnSuggestions() { setTimeout(() => this.showColumnSuggestions = false, 150) },
-    selectColumnName(n) { this.column = n; this.showColumnSuggestions = false },
-  },
-  watch: {
-    activeView(val) { localStorage.setItem('dbviewer_activeView', val) },
-    isDark(val) {
-      document.documentElement.classList.toggle('dark', val)
-      document.documentElement.classList.toggle('light', !val)
-      localStorage.setItem('dbviewer_theme', val ? 'dark' : 'light')
-    },
-    // Port auto-fill when connection type changes
-    'connForm.type'(val) {
-      const defaults = { mysql: 3306, postgres: 5432, mssql: 1433, sqlite: 0 }
-      if (defaults[val] !== undefined) this.connForm.port = defaults[val]
+    mounted() {
+        // Apply persisted theme on load
+        if (this.isDark) {
+            document.documentElement.classList.add('dark')
+        } else {
+            document.documentElement.classList.add('light')
+        }
+        // Ensure session_id exists so multi-tab isolation works from the first request
+        if (!localStorage.getItem('dbviewer_session_id')) {
+            localStorage.setItem('dbviewer_session_id', Math.random().toString(36).slice(2) + Date.now().toString(36))
+        }
+        if (this.isAuthenticated) {
+            this.loadConnections()
+            this.loadFullConnections()
+        }
     }
-  },
-  mounted() {
-    // Apply persisted theme on load
-    if (this.isDark) {
-      document.documentElement.classList.add('dark')
-    } else {
-      document.documentElement.classList.add('light')
-    }
-    // Ensure session_id exists so multi-tab isolation works from the first request
-    if (!localStorage.getItem('dbviewer_session_id')) {
-      localStorage.setItem('dbviewer_session_id', Math.random().toString(36).slice(2) + Date.now().toString(36))
-    }
-    if (this.isAuthenticated) {
-      this.loadConnections()
-      this.loadFullConnections()
-    }
-  }
 }).mount('#app')
 </script>
 </body>
