@@ -134,6 +134,38 @@ def start_server(
     data_dir = data_dir or DATA_DIR
     ensure_data_dir(data_dir)
 
+    # Auto-create admin user if no users.json exists and auth is enabled
+    if not no_auth:
+        from .auth import load_users, create_user as _create_user
+        from pathlib import Path as _P
+        users_path = _P(data_dir) / "users.json"
+        if not users_path.exists() or not load_users(data_dir):
+            import getpass as _gp
+            print()
+            print("  ⚠️  No users found. Create an admin account to continue.")
+            print(f"  (Or run: dbviewer --create-user admin <password> --data-dir {data_dir})")
+            print()
+            try:
+                username = input("  New username [admin]: ").strip() or "admin"
+                password = _gp.getpass(f"  Password for '{username}': ")
+                if not password:
+                    print("  Password cannot be empty. Using --no-auth instead.")
+                    no_auth = True
+                else:
+                    confirm = _gp.getpass(f"  Confirm password: ")
+                    if password != confirm:
+                        print("  Passwords do not match. Using --no-auth instead.")
+                        no_auth = True
+                    else:
+                        _create_user(data_dir, username, password)
+                        print(f"  ✅ User '{username}' created.")
+                        print()
+            except (EOFError, KeyboardInterrupt):
+                # Non-interactive environment (e.g. systemd) — start with --no-auth
+                print()
+                print("  Non-interactive mode — starting with --no-auth.")
+                no_auth = True
+
     # Demo mode: seed SQLite connection + disable auth
     if demo:
         _setup_demo_mode(data_dir)

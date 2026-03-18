@@ -1245,7 +1245,7 @@ Hint: ${diag.hint}`)
       const d = await this.apiCall('testConnection', { connection: testIndex })
       this.connTestResult = d?.success
         ? `✅ ${d.message}`
-        : `❌ ${d.message}${d.diagnostics?.hint ? 'Hint: ' + d.diagnostics.hint : ''}`
+        : `❌ ${d.message}${d.diagnostics?.hint ? '\nHint: ' + d.diagnostics.hint : ''}`
     },
 
     // ── Query autocomplete & history ──

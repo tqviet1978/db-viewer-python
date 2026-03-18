@@ -203,6 +203,11 @@ def create_router(data_dir: str, no_auth: bool = False) -> APIRouter:
     async def login(body: LoginBody):
         from .auth import load_users, verify_password
         users = load_users(data_dir)
+        if not users:
+            return {
+                "success": False,
+                "message": "No users found. Run: dbviewer --create-user admin <password>"
+            }
         for user in users:
             if user.get("username") == body.username and verify_password(body.password, user.get("password_hash", "")):
                 return {"success": True}
