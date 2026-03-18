@@ -18,8 +18,6 @@ Especially useful for **backend developers and DBAs** who need to quickly inspec
 Built with **Python / FastAPI (backend)** and **Vue.js 3 (frontend)**.
 Designed to be **self-hosted, simple, and fast**.
 
-> This is a Python rewrite of the [original PHP version](https://github.com/cloudpad9/db-viewer). Same features, much simpler installation.
-
 ---
 
 # Install
@@ -62,7 +60,7 @@ The update script replaces only the application code — your data directory (`~
 
 # Requirements
 
-Python 3.10 or newer. No web server, no PHP, no Node.js.
+Python 3.10 or newer. 
 
 Check your Python version:
 
@@ -314,12 +312,6 @@ Then remove this line from `~/.bashrc` and/or `~/.zshrc`:
 ```bash
 export PATH="$HOME/.dbviewer/bin:$PATH"
 ```
-
----
-
-# Related
-
-This project is a Python rewrite of [db-viewer](https://github.com/cloudpad9/db-viewer) (PHP + Vue.js). Same UI and features, simpler installation.
 
 ---
 
