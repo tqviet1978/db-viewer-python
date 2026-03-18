@@ -273,12 +273,12 @@ class GenericDriver(ABC):
         html = ""
         if query:
             clean_q = re.sub(r"\s+", " ", query)
-            html += f'<div style="white-space: pre-wrap;margin-bottom: 10px;">{clean_q}</div>'
+            html += f'<div class="query-label">{clean_q}</div>'
 
         if table:
             html += f"<h2>.: {table}</h2>"
 
-        html += '<table border="1" cellspacing="5" cellpadding="5">'
+        html += '<table class="result-table">'
         html += "<thead><tr><th>#</th>"
         for col in columns:
             html += f'<th class="sortable" data-col="{col}">{col}<span class="sort-arrow"> ⇅</span></th>'

@@ -465,27 +465,137 @@ def _build_create_table_from_schema(table: str, handler: "GenericDriver") -> lis
         ]
 
 
+def _build_insert_sql(table: str, columns: list[str], row: dict, db_type: str) -> str:
+    """Build a single INSERT statement from a row dict, quoting identifiers by db_type.
+
+    NULL values become SQL NULL. All other values are single-quote escaped.
+    """
+    def _q(val):
+        if val is None:
+            return "NULL"
+        return "'" + str(val).replace("'", "''") + "'"
+
+    if db_type == "mysql":
+        col_list = ", ".join(f"`{c}`" for c in columns)
+        val_list = ", ".join(_q(row.get(c)) for c in columns)
+        return f"INSERT INTO `{table}` ({col_list}) VALUES ({val_list})"
+    elif db_type in ("postgres", "postgresql"):
+        col_list = ", ".join(f'"{c}"' for c in columns)
+        val_list = ", ".join(_q(row.get(c)) for c in columns)
+        return f'INSERT INTO "{table}" ({col_list}) VALUES ({val_list})'
+    else:  # mssql
+        col_list = ", ".join(f"[{c}]" for c in columns)
+        val_list = ", ".join(_q(row.get(c)) for c in columns)
+        return f"INSERT INTO [{table}] ({col_list}) VALUES ({val_list})"
+
+
+def _copy_table_data(
+    table: str,
+    source: "GenericDriver",
+    dest: "GenericDriver",
+    batch_size: int = 500,
+) -> tuple[int, list[str]]:
+    """Fetch all rows from *source* and INSERT them into *dest* in batches.
+
+    Returns (rows_copied, error_messages).
+    Paginates reads so large tables do not exhaust memory.
+    """
+    dest_db_type = _detect_db_type(dest)
+    source_columns = list(source.get_table_columns(table).keys())
+    total_rows = 0
+    errors: list[str] = []
+    offset = 0
+
+    while True:
+        rows = source.get_table_data(table, offset=offset, limit=batch_size)
+        if not rows:
+            break
+        for row in rows:
+            sql = _build_insert_sql(table, source_columns, row, dest_db_type)
+            _, error, _ = dest.execute_query(sql)
+            if error:
+                errors.append(f"{table}[{offset + total_rows}]: {error}")
+            else:
+                total_rows += 1
+        if len(rows) < batch_size:
+            break
+        offset += batch_size
+
+    return total_rows, errors
+
+
+def _is_same_server(handler: "GenericDriver", peer_handler: "GenericDriver") -> bool:
+    """Return True if both handlers point to the same DB server instance."""
+    s1, s2 = handler.settings, peer_handler.settings
+    return (
+        s1.get("server", "") == s2.get("server", "")
+        and str(s1.get("port", "")) == str(s2.get("port", ""))
+        and s1.get("type", "mysql") == s2.get("type", "mysql")
+    )
+
+
 def copy_tables(
     tables: list[str],
     handler: "GenericDriver",
     peer_handler: "GenericDriver",
     dry_run: bool = False,
 ) -> list[str]:
-    """Copy tables from handler's DB to peer_handler's DB.
+    """Copy tables from handler\'s DB to peer_handler\'s DB.
 
-    Uses backend-specific DDL generation so MySQL/PostgreSQL/MSSQL all work.
+    Strategy:
+    - MySQL same-server: ``INSERT INTO dest SELECT * FROM source.table`` (fast)
+    - All other cases (cross-server, PostgreSQL, MSSQL): row-fetch-and-insert
+      via ``get_table_data()`` + per-row INSERT (works across servers and DBs)
+
+    dry_run=True returns DDL + summary comments without executing anything.
     """
-    all_queries: list[str] = []
+    src_type = _detect_db_type(handler)
+    use_same_server = (src_type == "mysql" and _is_same_server(handler, peer_handler))
+
+    summary_lines: list[str] = []
 
     for table in tables:
-        stmts = _build_create_table_from_schema(table, handler)
-        all_queries.extend(stmts)
+        ddl_stmts = _build_create_table_from_schema(table, handler)
+        if not ddl_stmts:
+            summary_lines.append(f"-- WARNING: table {table!r} not found in source schema")
+            continue
 
-    if not dry_run:
-        for q in all_queries:
-            peer_handler.execute_query(q)
+        if dry_run:
+            summary_lines.extend(ddl_stmts[:2])  # drop + create
+            if use_same_server and len(ddl_stmts) > 2:
+                summary_lines.append(ddl_stmts[2])  # INSERT SELECT
+            else:
+                n = handler.get_table_count(table)
+                summary_lines.append(
+                    f"-- [DATA] {n} row(s) from {table!r} "
+                    f"would be copied via row-fetch-and-insert"
+                )
+            summary_lines.append("")
+            continue
 
-    return all_queries
+        # Execute DDL on peer
+        _, err, _ = peer_handler.execute_query(ddl_stmts[0])  # drop
+        if err:
+            summary_lines.append(f"-- DROP error on {table}: {err}")
+        _, err, _ = peer_handler.execute_query(ddl_stmts[1])  # create
+        if err:
+            summary_lines.append(f"-- CREATE error on {table}: {err}")
+            continue
+
+        if use_same_server and len(ddl_stmts) > 2:
+            _, err, _ = peer_handler.execute_query(ddl_stmts[2])
+            if err:
+                summary_lines.append(f"-- INSERT error on {table}: {err}")
+            else:
+                n = handler.get_table_count(table)
+                summary_lines.append(f"-- Copied {n} rows to {table!r} (same-server SELECT)")
+        else:
+            copied, errors = _copy_table_data(table, handler, peer_handler)
+            summary_lines.append(f"-- Copied {copied} rows to {table!r} (row-fetch-and-insert)")
+            for e in errors[:5]:
+                summary_lines.append(f"--   ERROR: {e}")
+
+    return summary_lines
 
 
 def clone_database(
@@ -493,6 +603,6 @@ def clone_database(
     peer_handler: "GenericDriver",
     dry_run: bool = False,
 ) -> list[str]:
-    """Clone all tables from handler's DB to peer_handler's DB."""
+    """Clone all tables from handler\'s DB to peer_handler\'s DB."""
     all_tables = handler.get_table_names()
     return copy_tables(all_tables, handler, peer_handler, dry_run)

@@ -538,7 +538,7 @@ def create_router(data_dir: str, no_auth: bool = False) -> APIRouter:
                 tname = tm.group(1) if tm else ""
                 rows, error, elapsed_ms = d.execute_query(part)
                 if error:
-                    htmls.append(f'<span style="color:red">{error}</span>')
+                    htmls.append(f'<span class="query-error">{error}</span>')
                 elif isinstance(rows, str):
                     htmls.append(rows)
                 else:
@@ -751,7 +751,7 @@ def create_router(data_dir: str, no_auth: bool = False) -> APIRouter:
             for part in parts:
                 _, error, _ = d.execute_query(part)
                 if error:
-                    errors.append(f"<span style='color:red'>Error in: {part[:80]}…<br/>{error}</span>")
+                    errors.append(f"<span class='query-error'>Error in: {part[:80]}…<br/>{error}</span>")
                 else:
                     ok += 1
             note = "<br/>".join(errors)

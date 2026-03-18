@@ -69,10 +69,10 @@ button {
   transition: background .12s; white-space: nowrap;
 }
 button:hover { background: var(--btn-hover); }
-button.primary { background: var(--success); color: #fff; border-color: #1a7f3780; }
-button.primary:hover { background: #157530; }
+button.primary { background: var(--success); color: var(--bg); border-color: #1a7f3780; }
+button.primary:hover { filter: brightness(0.9); }
 button.danger { color: var(--danger); border-color: var(--danger); }
-button.danger:hover { background: #fff0f0; }
+button.danger:hover { background: color-mix(in srgb, var(--danger) 12%, var(--bg)); }
 button:disabled { opacity: .5; cursor: default; }
 
 /* ── Select ── */
@@ -93,21 +93,55 @@ th.sort-active .sort-arrow { opacity:1; }
 .response-pane {
   flex: 1; overflow: auto; font-family: var(--mono); font-size: 12px;
   border: 1px solid var(--border); border-radius: var(--radius);
-  padding: 10px; background: var(--bg); white-space: pre-wrap; position: relative;
+  padding: 10px; background: var(--bg); color: var(--text);
+  white-space: pre-wrap; position: relative;
 }
 .response-pane table {
   border-collapse: collapse; font-size: 12px; margin-bottom: 12px;
 }
 .response-pane table th, .response-pane table td {
   border: 1px solid var(--border); padding: 5px 10px; font-family: var(--mono);
+  color: var(--text);
 }
-.response-pane table thead th { background: var(--bg2); font-weight: 600; }
-.response-pane table tbody tr:nth-child(odd) { background: var(--bg); }
-.response-pane table tbody tr:nth-child(even) { background: var(--bg2); }
+.response-pane table thead th { background: var(--bg2); font-weight: 600; color: var(--text); }
+.response-pane table tbody tr:nth-child(odd)  td, .response-pane table tbody tr:nth-child(odd)  th { background: var(--bg); }
+.response-pane table tbody tr:nth-child(even) td, .response-pane table tbody tr:nth-child(even) th { background: var(--bg2); }
+.response-pane table tbody tr:hover td { background: color-mix(in srgb, var(--accent) 8%, var(--bg)); }
 .response-pane h2 { font-size: 13px; color: var(--text2); margin: 6px 0 4px; }
 .snippets-textarea {
   width: 100%; height: 100%; resize: none; border: none; outline: none;
   font-family: var(--mono); font-size: 12px; background: transparent; color: var(--text);
+}
+
+/* ── HTML response table — replaces HTML presentation attrs (border=1 etc.) ── */
+.result-table {
+  border-collapse: collapse; font-size: 12px; margin-bottom: 12px; width: auto;
+  color: var(--text); border-color: var(--border);
+}
+.result-table th, .result-table td {
+  border: 1px solid var(--border); padding: 5px 10px; font-family: var(--mono);
+  color: var(--text); background: var(--bg);
+}
+.result-table thead th {
+  background: var(--bg2); font-weight: 600; color: var(--text);
+  position: sticky; top: 0; z-index: 1;
+}
+.result-table tbody tr:nth-child(odd)  td { background: var(--bg); }
+.result-table tbody tr:nth-child(even) td { background: var(--bg2); }
+.result-table tbody tr:hover td { background: color-mix(in srgb, var(--accent) 8%, var(--bg)); }
+
+/* ── Query label (shown above result tables) ── */
+.query-label {
+  white-space: pre-wrap; margin-bottom: 8px; padding: 6px 8px;
+  background: var(--bg2); border-left: 3px solid var(--accent);
+  border-radius: 0 var(--radius) var(--radius) 0;
+  font-family: var(--mono); font-size: 11px; color: var(--text2);
+}
+
+/* ── Query / import error spans ── */
+.query-error {
+  color: var(--danger); display: block; margin: 2px 0;
+  font-family: var(--mono); font-size: 12px;
 }
 
 /* ── Login ── */
@@ -118,7 +152,7 @@ th.sort-active .sort-arrow { opacity:1; }
 .login-card {
   background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
   padding: 32px; width: 340px; display: flex; flex-direction: column; gap: 14px;
-  box-shadow: 0 4px 24px rgba(0,0,0,.08);
+  box-shadow: 0 4px 24px rgba(0,0,0,.3);
 }
 .login-card h2 { font-size: 20px; color: var(--text); font-weight: 600; }
 .login-card input {
@@ -145,7 +179,7 @@ th.sort-active .sort-arrow { opacity:1; }
 #inline-editor {
   position: fixed; z-index: 500; display: none;
   border: 2px solid var(--accent); border-radius: 3px; padding: 2px 6px;
-  font-family: var(--mono); font-size: 12px; background: #fff;
+  font-family: var(--mono); font-size: 12px; background: var(--bg);
   box-shadow: 0 2px 8px rgba(9,105,218,0.25);
 }
 
