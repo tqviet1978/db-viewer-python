@@ -1,0 +1,919 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DB Viewer</title>
+<script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+<script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif;
+  font-size: 14px; background: #fff; color: #1f2328; height: 100vh; overflow: hidden;
+}
+:root {
+  --bg: #fff; --bg2: #f6f8fa; --border: #d0d7de;
+  --text: #1f2328; --text2: #656d76;
+  --accent: #0969da; --success: #1a7f37; --danger: #d1242f;
+  --btn-bg: #f6f8fa; --btn-border: rgba(27,31,36,0.15);
+  --btn-hover: #f3f4f6; --radius: 6px;
+  --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+}
+
+/* ── Layout ── */
+.app-layout { display: flex; height: 100vh; }
+.sidebar {
+  width: 25%; min-width: 200px; max-width: 320px;
+  background: var(--bg2); border-right: 1px solid var(--border);
+  display: flex; flex-direction: column; padding: 10px; gap: 8px; overflow: hidden;
+}
+.content { flex: 1; display: flex; min-width: 0; }
+.tab-switcher {
+  display: flex; flex-direction: column; align-items: center;
+  border-right: 1px solid var(--border); background: var(--bg2);
+  padding: 12px 2px; gap: 4px; min-width: 32px;
+}
+.tab-switcher span {
+  writing-mode: vertical-rl; transform: rotate(180deg);
+  cursor: pointer; padding: 8px 4px; border-radius: var(--radius);
+  font-size: 12px; color: var(--text2); white-space: nowrap;
+  transition: color .15s, background .15s; user-select: none;
+}
+.tab-switcher span:hover { color: var(--text); background: var(--btn-hover); }
+.tab-switcher span.active { color: var(--accent); font-weight: 600; border-left: 2px solid var(--accent); }
+.tab-content { flex: 1; display: flex; flex-direction: column; overflow: hidden; padding: 10px; gap: 8px; }
+
+/* ── Toolbar ── */
+.toolbar { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; }
+.toolbar input[type=text], .toolbar textarea {
+  border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 4px 10px; font-size: 13px; font-family: var(--mono); outline: none;
+  background: var(--bg);
+}
+.toolbar input[type=text]:focus, .toolbar textarea:focus {
+  border-color: var(--accent); box-shadow: 0 0 0 3px rgba(9,105,218,0.2);
+}
+.toolbar input.wide { flex: 1; min-width: 180px; }
+.toolbar label { font-size: 12px; color: var(--text2); display:flex; gap:4px; align-items:center; }
+
+/* ── Buttons ── */
+button {
+  border: 1px solid var(--btn-border); border-radius: var(--radius);
+  padding: 4px 12px; font-size: 13px; cursor: pointer;
+  background: var(--btn-bg); color: var(--text);
+  transition: background .12s; white-space: nowrap;
+}
+button:hover { background: var(--btn-hover); }
+button.primary { background: var(--success); color: #fff; border-color: #1a7f3780; }
+button.primary:hover { background: #157530; }
+button.danger { color: var(--danger); border-color: var(--danger); }
+button.danger:hover { background: #fff0f0; }
+button:disabled { opacity: .5; cursor: default; }
+
+/* ── Select ── */
+select {
+  border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 4px 8px; font-size: 13px; background: var(--bg); color: var(--text); outline: none;
+}
+select:focus { border-color: var(--accent); }
+select[multiple] { flex: 1; min-height: 200px; font-family: var(--mono); font-size: 12px; }
+
+/* ── Response pane ── */
+.response-pane {
+  flex: 1; overflow: auto; font-family: var(--mono); font-size: 12px;
+  border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 10px; background: var(--bg); white-space: pre-wrap; position: relative;
+}
+.response-pane table {
+  border-collapse: collapse; font-size: 12px; margin-bottom: 12px;
+}
+.response-pane table th, .response-pane table td {
+  border: 1px solid var(--border); padding: 5px 10px; font-family: var(--mono);
+}
+.response-pane table thead th { background: var(--bg2); font-weight: 600; }
+.response-pane table tbody tr:nth-child(odd) { background: var(--bg); }
+.response-pane table tbody tr:nth-child(even) { background: var(--bg2); }
+.response-pane h2 { font-size: 13px; color: var(--text2); margin: 6px 0 4px; }
+.snippets-textarea {
+  width: 100%; height: 100%; resize: none; border: none; outline: none;
+  font-family: var(--mono); font-size: 12px; background: transparent; color: var(--text);
+}
+
+/* ── Login ── */
+.login-overlay {
+  position: fixed; inset: 0; background: var(--bg2);
+  display: flex; align-items: center; justify-content: center; z-index: 999;
+}
+.login-card {
+  background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+  padding: 32px; width: 340px; display: flex; flex-direction: column; gap: 14px;
+  box-shadow: 0 4px 24px rgba(0,0,0,.08);
+}
+.login-card h2 { font-size: 20px; color: var(--text); font-weight: 600; }
+.login-card input {
+  width: 100%; border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 7px 12px; font-size: 14px; outline: none;
+}
+.login-card input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(9,105,218,0.2); }
+.login-card button { width: 100%; padding: 8px; font-size: 14px; }
+.login-error { color: var(--danger); font-size: 12px; }
+
+/* ── Autocomplete dropdown ── */
+.autocomplete-wrap { position: relative; flex: 1; min-width: 160px; }
+.autocomplete-list {
+  position: absolute; top: 100%; left: 0; right: 0; z-index: 200;
+  background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius);
+  box-shadow: 0 4px 12px rgba(0,0,0,.1); max-height: 180px; overflow-y: auto;
+}
+.autocomplete-list li {
+  padding: 5px 10px; cursor: pointer; font-family: var(--mono); font-size: 12px; list-style: none;
+}
+.autocomplete-list li:hover, .autocomplete-list li.active { background: var(--bg2); }
+
+/* ── Inline cell editor ── */
+#inline-editor {
+  position: fixed; z-index: 500; display: none;
+  border: 2px solid var(--accent); border-radius: 3px; padding: 2px 6px;
+  font-family: var(--mono); font-size: 12px; background: #fff;
+  box-shadow: 0 2px 8px rgba(9,105,218,0.25);
+}
+
+/* ── History panel ── */
+.history-panel { width: 40%; border-left: 1px solid var(--border); padding: 8px; overflow-y: auto; }
+.history-item {
+  padding: 5px 8px; border: 1px solid var(--border); border-radius: var(--radius);
+  margin-bottom: 5px; cursor: pointer; font-family: var(--mono); font-size: 11px;
+  display: flex; align-items: flex-start; gap: 6px;
+}
+.history-item:hover { background: var(--bg2); }
+.history-item .del { color: var(--danger); cursor: pointer; margin-left: auto; flex-shrink:0; }
+
+/* ── Misc ── */
+.section-header { font-weight: 600; font-size: 12px; color: var(--text2); margin: 4px 0 2px; }
+.row-gap { display: flex; flex-direction: column; gap: 5px; }
+hr.sep { border: none; border-top: 1px solid var(--border); margin: 4px 0; }
+.badge {
+  font-size: 11px; background: var(--bg2); border: 1px solid var(--border);
+  border-radius: 10px; padding: 1px 6px; color: var(--text2);
+}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- ── Login overlay ── -->
+  <div class="login-overlay" v-if="!isAuthenticated">
+    <div class="login-card">
+      <h2>🗄 DB Viewer</h2>
+      <input type="text" v-model="loginForm.username" placeholder="Username" @keyup.enter="login" autofocus />
+      <input type="password" v-model="loginForm.password" placeholder="Password" @keyup.enter="login" />
+      <div class="login-error" v-if="loginError">{{ loginError }}</div>
+      <button class="primary" @click="login" :disabled="loading.login">
+        {{ loading.login ? 'Signing in…' : 'Sign in' }}
+      </button>
+    </div>
+  </div>
+
+  <!-- ── Main app ── -->
+  <div class="app-layout" v-else>
+
+    <!-- Left sidebar -->
+    <aside class="sidebar">
+      <div class="section-header">Connection</div>
+      <select v-model="selectedConnection" @change="onConnectionChanged" style="width:100%">
+        <option value="">— select —</option>
+        <option v-for="(c, i) in connections" :key="i" :value="i">{{ c }}</option>
+      </select>
+      <button @click="refreshConnection" style="width:100%">⟳ Refresh</button>
+      <hr class="sep">
+      <div class="section-header">Tables</div>
+      <input type="text" v-model="tableFilterKeyword" placeholder="Filter tables…" style="width:100%">
+      <select multiple v-model="selectedTables" style="flex:1">
+        <option v-for="t in filteredTables" :key="t.table" :value="t.table">{{ t.title }}</option>
+      </select>
+      <div style="display:flex;justify-content:space-between">
+        <span class="badge">{{ selectedTables.length }} selected</span>
+        <button @click="selectedTables=[]" style="padding:1px 6px;font-size:11px">Clear</button>
+      </div>
+      <hr class="sep">
+      <button @click="logout" style="width:100%;color:var(--danger)">Sign out</button>
+    </aside>
+
+    <!-- Right panel -->
+    <main class="content">
+      <!-- Tab switcher -->
+      <nav class="tab-switcher">
+        <span v-for="tab in tabs" :key="tab.id"
+              @click="activeView = tab.id"
+              :class="{active: activeView === tab.id}">{{ tab.label }}</span>
+      </nav>
+
+      <!-- Tab content -->
+      <div class="tab-content">
+
+        <!-- ── VIEWER tab ── -->
+        <template v-if="activeView === 'viewer'">
+          <div class="toolbar">
+            <button @click="showConcept">Concept</button>
+            <button @click="showStructure">Structure</button>
+            <button @click="describe">Describe</button>
+            <button @click="showData()">Data</button>
+            <button @click="showEditorForm=!showEditorForm">New</button>
+            <input type="text" v-model="limitIdFrom" placeholder="From,To" style="width:100px">
+            <button @click="showIndexes">Indexes</button>
+            <button @click="dropIndexes">Drop indexes</button>
+            <button @click="toString">To string</button>
+            <button @click="snippets">Snippets</button>
+            <button @click="vue">Vue</button>
+          </div>
+          <div class="toolbar">
+            <div class="autocomplete-wrap">
+              <input type="text" class="wide" v-model="column" placeholder="Column name…"
+                     @input="handleColumnInput" @focus="handleColumnFocus" @blur="hideColumnSuggestions">
+              <ul class="autocomplete-list" v-if="showColumnSuggestions && filteredColumnNames.length">
+                <li v-for="n in filteredColumnNames" :key="n"
+                    @mousedown.prevent="selectColumnName(n)">{{ n }}</li>
+              </ul>
+            </div>
+            <button @click="columnSearch">Column Search</button>
+            <div class="autocomplete-wrap" style="flex:2">
+              <input type="text" class="wide" v-model="queryString" placeholder="SQL query…"
+                     @input="handleQueryInput" @keyup.enter="executeQuery()"
+                     @keyup.up.prevent="handleQueryArrowUp" @keyup.down.prevent="handleQueryArrowDown"
+                     @keyup.esc="showQuerySuggestions=false">
+              <ul class="autocomplete-list" v-if="showQuerySuggestions && querySuggestions.length">
+                <li v-for="(s,i) in querySuggestions" :key="s"
+                    :class="{active: i===selectedQuerySuggestionIndex}"
+                    @mousedown.prevent="selectQuerySuggestion(s)">{{ s }}</li>
+              </ul>
+            </div>
+            <button @click="executeQuery()" :disabled="loading.query">Run</button>
+            <button @click="executeQuery('explain')">Explain</button>
+            <button @click="executeQuery('profiling')">Profile</button>
+            <button @click="executeQuery('lastRow')">L</button>
+            <button @click="executeQuery('lastUpdate')">LU</button>
+            <button @click="showQueryHistory=!showQueryHistory" :class="{active:showQueryHistory}">▾</button>
+          </div>
+          <div class="toolbar" v-if="hasAi">
+            <input type="text" class="wide" v-model="ai.message"
+                   placeholder="Ask AI…" @keyup.enter="sendChatMessage">
+            <button @click="sendChatMessage" :disabled="loading.ai">Send</button>
+          </div>
+          <!-- Editor form -->
+          <div v-if="showEditorForm" class="toolbar row-gap" style="border:1px solid var(--border);padding:8px;border-radius:6px">
+            <div class="section-header">Insert / Update row in: {{ selectedTables[0] }}</div>
+            <div v-for="col in editorColumns" :key="col" style="display:flex;gap:6px;align-items:center">
+              <label style="width:140px;font-size:12px">{{ col }}</label>
+              <input type="text" class="wide" v-model="editorData[col]" :placeholder="col">
+            </div>
+            <div style="display:flex;gap:6px">
+              <button class="primary" @click="insertTableRow">{{ editorData.ID ? 'Update' : 'Insert' }}</button>
+              <button @click="showEditorForm=false">Cancel</button>
+            </div>
+          </div>
+          <div style="display:flex;flex:1;min-height:0;gap:8px">
+            <div class="response-pane" ref="responsePane"
+                 v-if="!isSnippetResponse" v-html="response"
+                 @click="onResponsePaneClick"></div>
+            <textarea class="response-pane snippets-textarea" v-else v-model="response"></textarea>
+            <div class="history-panel" v-if="showQueryHistory" style="max-width:300px">
+              <div class="section-header">Query History</div>
+              <div class="history-item" v-for="(q,i) in queryHistory" :key="i">
+                <span @click="onClickQueryHistory(q)" style="flex:1;word-break:break-all">{{ q }}</span>
+                <span class="del" @click="queryHistory.splice(i,1);saveQueryHistory()">✕</span>
+              </div>
+            </div>
+          </div>
+        </template>
+
+        <!-- ── OPERATIONS tab ── -->
+        <template v-if="activeView === 'operations'">
+          <div class="toolbar">
+            <button @click="showConcept">Concept</button>
+            <button @click="showStructure">Structure</button>
+            <button @click="showIndexes">Indexes</button>
+            <button @click="showSizes">Sizes</button>
+            <button @click="showData()">Data</button>
+          </div>
+          <div class="toolbar">
+            <input type="text" class="wide" v-model="queryString" placeholder="SQL query…" @keyup.enter="executeQuery()">
+            <button @click="executeQuery()" :disabled="loading.query">Run</button>
+            <label><input type="checkbox" v-model="dryRun.tableOperations"> Dry run</label>
+            <button class="danger" @click="truncateTables">Truncate</button>
+            <button class="danger" @click="dropTables">Drop</button>
+            <button @click="insertFakeData">Fake data</button>
+            <input type="text" v-model="confirmation.tableOperations" placeholder="Confirmation" style="width:130px">
+          </div>
+          <div class="toolbar">
+            <input type="text" v-model="newTableName" placeholder="New name" style="width:140px">
+            <button @click="renameTable" :disabled="selectedTables.length!==1">Rename</button>
+            <button @click="cloneTable" :disabled="selectedTables.length!==1">Clone</button>
+            <input type="text" v-model="confirmation.renameTable" placeholder="Confirmation" style="width:130px">
+          </div>
+          <div class="toolbar">
+            <div class="autocomplete-wrap" style="width:160px">
+              <input type="text" class="wide" v-model="column" placeholder="Column name…"
+                     @input="handleColumnInput" @focus="handleColumnFocus" @blur="hideColumnSuggestions">
+              <ul class="autocomplete-list" v-if="showColumnSuggestions && filteredColumnNames.length">
+                <li v-for="n in filteredColumnNames" :key="n" @mousedown.prevent="selectColumnName(n)">{{ n }}</li>
+              </ul>
+            </div>
+            <button @click="columnSearch">Search</button>
+            <input type="text" v-model="newColumnName" placeholder="New name" style="width:120px">
+            <input type="text" v-model="newColumnType" placeholder="New type" style="width:140px">
+            <label><input type="checkbox" v-model="dryRun.columnOperations"> Dry run</label>
+            <button @click="alterColumn">Alter</button>
+            <button class="danger" @click="dropColumn">Drop col</button>
+            <button @click="insertAfterColumn">Insert after</button>
+            <input type="text" v-model="confirmation.columnOperations" placeholder="Confirmation" style="width:130px">
+          </div>
+          <div class="toolbar" style="background:var(--bg2);padding:6px;border-radius:6px;border:1px solid var(--border)">
+            <select v-model="queryBuilder.operation" style="width:140px">
+              <option value="select">SELECT * FROM</option>
+              <option value="update">UPDATE</option>
+              <option value="delete">DELETE FROM</option>
+            </select>
+            <span style="font-family:var(--mono);font-size:12px">{{ selectedTables[0] || '…' }}</span>
+            <template v-if="queryBuilder.operation==='update'">
+              SET
+              <input type="text" v-model="queryBuilder.setColumn" placeholder="col" style="width:100px">
+              =
+              <input type="text" v-model="queryBuilder.setValue" placeholder="val" style="width:100px">
+            </template>
+            WHERE
+            <input type="text" v-model="queryBuilder.whereColumn" placeholder="col" style="width:100px">
+            =
+            <input type="text" v-model="queryBuilder.whereValue" placeholder="val" style="width:100px">
+            <button @click="executeBuilderQuery" :disabled="loading.query">Run</button>
+          </div>
+          <div class="response-pane" v-if="!isSnippetResponse" v-html="response"></div>
+          <textarea class="response-pane snippets-textarea" v-else v-model="response"></textarea>
+        </template>
+
+        <!-- ── DATABASES tab ── -->
+        <template v-if="activeView === 'databases'">
+          <div class="toolbar">
+            <select v-model="selectedPeerConnection" style="width:180px">
+              <option value="">— target —</option>
+              <option v-for="(c, i) in connections" :key="i" :value="i">{{ c }}</option>
+            </select>
+            <button @click="showData(true)">Data</button>
+            <button @click="getPeerPatch">Diff</button>
+            <label><input type="checkbox" v-model="dryRun.databaseOperations"> Dry run</label>
+            <button @click="cloneDatabase">Clone DB</button>
+            <button @click="copyTables">Copy tables</button>
+            <input type="text" v-model="confirmation.databaseOperations" placeholder="Confirmation" style="width:130px">
+          </div>
+          <div class="toolbar">
+            <input type="text" class="wide" v-model="queryString" placeholder="SQL query…" @keyup.enter="executeQuery()">
+            <button @click="executeQuery()" :disabled="loading.query">Run</button>
+          </div>
+          <div class="response-pane" v-html="response"></div>
+        </template>
+
+        <!-- ── EXPORTER tab ── -->
+        <template v-if="activeView === 'exporter'">
+          <div style="display:flex;gap:10px;flex:1;min-height:0">
+            <div class="row-gap" style="flex:1">
+              <textarea v-model="quickReportQueryString" rows="4" placeholder="SQL query…"
+                        style="width:100%;border:1px solid var(--border);border-radius:6px;padding:8px;font-family:var(--mono);font-size:12px;resize:vertical"></textarea>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+                <div><label class="section-header">Columns</label><input type="text" v-model="quickReportColumns" class="wide" placeholder="COL1,COL2"></div>
+                <div><label class="section-header">Titles</label><input type="text" v-model="quickReportColumnTitles" class="wide" placeholder="Title 1, Title 2"></div>
+                <div><label class="section-header">Decimal columns</label><input type="text" v-model="quickReportDecimalColumns" class="wide"></div>
+                <div><label class="section-header">Text columns</label><input type="text" v-model="quickReportTextColumns" class="wide"></div>
+                <div><label class="section-header">Summable columns</label><input type="text" v-model="quickReportSummableColumns" class="wide"></div>
+                <div><label class="section-header">Center columns</label><input type="text" v-model="quickReportAlignCenterColumns" class="wide"></div>
+                <div><label class="section-header">Sheet sep. column</label><input type="text" v-model="quickReportSheetSeparationColumn" class="wide"></div>
+                <div><label class="section-header">Column widths</label><input type="text" v-model="quickReportColumnWidths" class="wide" placeholder="15,20,10"></div>
+              </div>
+              <div class="toolbar">
+                <button class="primary" @click="exportQuickReportData" :disabled="loading.export">
+                  {{ loading.export ? 'Exporting…' : '⬇ Export Excel' }}
+                </button>
+                <button @click="showReportHistory=!showReportHistory">Recent history</button>
+              </div>
+            </div>
+            <div class="history-panel" v-if="showReportHistory" style="width:35%;min-width:200px">
+              <div class="section-header">Report History</div>
+              <div class="history-item" v-for="(r,i) in reportHistory" :key="i">
+                <span @click="loadReport(r)" style="flex:1">{{ r.query.substring(0,60) }}…</span>
+                <span class="del" @click="reportHistory.splice(i,1);saveReportHistory()">✕</span>
+              </div>
+            </div>
+          </div>
+        </template>
+
+        <!-- ── IMPORTER tab ── -->
+        <template v-if="activeView === 'importer'">
+          <div class="toolbar">
+            <input type="text" v-model="importSqlFilePath" class="wide" placeholder="/path/to/file.sql">
+            <button class="primary" @click="importSqlFile" :disabled="loading.import">
+              {{ loading.import ? 'Importing…' : 'Import SQL file' }}
+            </button>
+          </div>
+          <div class="response-pane" v-html="response"></div>
+        </template>
+
+        <!-- ── AI GENERATOR tab ── -->
+        <template v-if="activeView === 'ai'">
+          <div class="toolbar">
+            <label><input type="checkbox" v-model="dryRun.gptOperation"> Dry run</label>
+            <button @click="generateCompactFormLayout" :disabled="loading.ai">
+              Generate Compact Form Layout
+            </button>
+          </div>
+          <div class="response-pane" v-html="response"></div>
+        </template>
+
+      </div><!-- /tab-content -->
+    </main>
+  </div><!-- /app-layout -->
+
+  <!-- Inline cell editor -->
+  <input id="inline-editor" type="text" @blur="commitInlineEdit" @keyup.enter="commitInlineEdit" @keyup.esc="cancelInlineEdit">
+</div>
+
+<script>
+const { createApp } = Vue
+
+createApp({
+  data() {
+    return {
+      isAuthenticated: !!localStorage.getItem('dbviewer_auth'),
+      loginForm: { username: '', password: '' },
+      loginError: '',
+      connections: [],
+      selectedConnection: '',
+      selectedPeerConnection: '',
+      tables: [],
+      selectedTables: [],
+      tableFilterKeyword: '',
+      activeView: localStorage.getItem('dbviewer_activeView') || 'viewer',
+      tabs: [
+        { id: 'viewer', label: 'Viewer' },
+        { id: 'operations', label: 'Operations' },
+        { id: 'databases', label: 'Databases' },
+        { id: 'exporter', label: 'Exporter' },
+        { id: 'importer', label: 'Importer' },
+        { id: 'ai', label: 'AI Generator' },
+      ],
+      response: '',
+      isSnippetResponse: false,
+      column: '',
+      availColumnNames: [],
+      showColumnSuggestions: false,
+      queryString: '',
+      queryHistory: JSON.parse(localStorage.getItem('dbviewer_queryHistory') || '[]'),
+      showQueryHistory: false,
+      showQuerySuggestions: false,
+      querySuggestions: [],
+      selectedQuerySuggestionIndex: -1,
+      limitIdFrom: '',
+      newTableName: '',
+      newColumnName: '',
+      newColumnType: '',
+      dryRun: { tableOperations: true, columnOperations: true, databaseOperations: true, gptOperation: true },
+      confirmation: { tableOperations: '', columnOperations: '', databaseOperations: '', renameTable: '' },
+      queryBuilder: { operation: 'select', setColumn: '', setValue: '', whereColumn: 'ID', whereValue: '' },
+      quickReportQueryString: '',
+      quickReportColumns: '',
+      quickReportColumnTitles: '',
+      quickReportDecimalColumns: '',
+      quickReportTextColumns: '',
+      quickReportSummableColumns: '',
+      quickReportAlignCenterColumns: '',
+      quickReportSheetSeparationColumn: '',
+      quickReportColumnWidths: '',
+      showReportHistory: false,
+      reportHistory: JSON.parse(localStorage.getItem('dbviewer_reportHistory') || '[]'),
+      importSqlFilePath: '',
+      ai: { message: '' },
+      showEditorForm: false,
+      editorColumns: [],
+      editorData: {},
+      hasAi: false,
+      loading: {},
+      // inline editor state
+      _inlineEdit: { table:'', column:'', uuid:'', cell:null },
+    }
+  },
+  computed: {
+    filteredTables() {
+      if (!this.tableFilterKeyword) return this.tables
+      const kw = this.tableFilterKeyword.toLowerCase()
+      return this.tables.filter(t => t.table.toLowerCase().includes(kw))
+    },
+    filteredColumnNames() {
+      if (!this.column) return this.availColumnNames
+      const kw = this.column.toLowerCase()
+      return this.availColumnNames.filter(n => n.toLowerCase().includes(kw))
+    },
+    authHeader() {
+      const auth = localStorage.getItem('dbviewer_auth')
+      return auth ? { Authorization: `Basic ${auth}` } : {}
+    }
+  },
+  methods: {
+    // ── Auth ──
+    async login() {
+      this.loading.login = true
+      this.loginError = ''
+      try {
+        const r = await axios.post('/api/login', this.loginForm)
+        if (r.data.success) {
+          const creds = btoa(`${this.loginForm.username}:${this.loginForm.password}`)
+          localStorage.setItem('dbviewer_auth', creds)
+          this.isAuthenticated = true
+          this.loginForm.password = ''
+          this.loadConnections()
+        } else {
+          this.loginError = r.data.message || 'Invalid credentials'
+        }
+      } catch(e) {
+        this.loginError = 'Login failed'
+      } finally { this.loading.login = false }
+    },
+    logout() {
+      localStorage.removeItem('dbviewer_auth')
+      this.isAuthenticated = false
+    },
+
+    // ── API helper ──
+    async apiCall(endpoint, data = {}, method = 'post') {
+      try {
+        const resp = await axios({ method, url: `/api/${endpoint}`, data, headers: this.authHeader })
+        if (resp.data?.success === false && resp.data?.message) {
+          alert(resp.data.message)
+        }
+        return resp.data
+      } catch(err) {
+        if (err.response?.status === 401) {
+          this.isAuthenticated = false
+          localStorage.removeItem('dbviewer_auth')
+        }
+        throw err
+      }
+    },
+
+    setResponse(d) {
+      this.isSnippetResponse = !!(d && (d.isSnippet || (typeof d.html === 'string' && d.html.length > 0 && /^[\w\s\[\]\.\/\*\-\+=#_$,;:@!?'"\(\)]+$/.test(d.html.substring(0,50)) && !d.html.startsWith('<'))))
+      this.isSnippetResponse = !!(d && d.isSnippet)
+      this.response = d?.html || ''
+    },
+
+    // ── Connections ──
+    async loadConnections() {
+      const d = await this.apiCall('connections', {}, 'get')
+      if (d?.connections) this.connections = d.connections
+      // Check AI config
+      this.hasAi = false
+      try {
+        const r = await axios.get('/api/config', { headers: this.authHeader })
+        this.hasAi = !!r.data?.ai_key_set
+      } catch(e) {}
+    },
+    async onConnectionChanged() {
+      if (this.selectedConnection === '') return
+      const d = await this.apiCall('setActiveConnection', { connection: parseInt(this.selectedConnection) })
+      if (d?.tables) {
+        this.tables = d.tables
+        this.selectedTables = []
+        // Load column names for autocomplete
+        this.loadColumnNames()
+      }
+    },
+    async refreshConnection() {
+      if (this.selectedConnection === '') return
+      const d = await this.apiCall('setActiveConnection', { connection: parseInt(this.selectedConnection), reload: true })
+      if (d?.tables) this.tables = d.tables
+    },
+    async loadColumnNames() {
+      const allTables = this.tables.map(t => t.table)
+      if (!allTables.length) return
+      const d = await this.apiCall('getColumnNames', { tables: allTables })
+      if (d?.columnNames) this.availColumnNames = d.columnNames
+    },
+
+    // ── Viewer actions ──
+    async showConcept() {
+      const d = await this.apiCall('concept', { tables: this.selectedTables })
+      this.isSnippetResponse = true; this.response = d?.html || ''
+    },
+    async showStructure() {
+      const d = await this.apiCall('structure', { tables: this.selectedTables })
+      this.isSnippetResponse = true; this.response = d?.html || ''
+    },
+    async describe() {
+      const d = await this.apiCall('describe', { tables: this.selectedTables })
+      this.isSnippetResponse = false; this.response = d?.html || ''
+    },
+    async showData(isPeer = false) {
+      const d = await this.apiCall('data', { tables: this.selectedTables, limitIdFrom: this.limitIdFrom })
+      this.isSnippetResponse = false; this.response = d?.html || ''
+      // Load editor columns for first selected table
+      if (this.selectedTables[0]) this.loadEditorColumns()
+    },
+    async showIndexes() {
+      const d = await this.apiCall('indexes', { tables: this.selectedTables })
+      this.isSnippetResponse = true; this.response = d?.html || ''
+    },
+    async dropIndexes() {
+      if (!confirm('Drop all indexes from selected tables?')) return
+      const d = await this.apiCall('dropIndexes', { tables: this.selectedTables })
+      this.isSnippetResponse = true; this.response = d?.html || ''
+    },
+    async executeQuery(mode = '') {
+      if (!this.queryString && !mode) return
+      this.loading.query = true
+      try {
+        const d = await this.apiCall('executeQuery', { query: this.queryString, mode, tables: this.selectedTables })
+        this.isSnippetResponse = false; this.response = d?.html || ''
+        if (this.queryString) this.addQueryHistory(this.queryString)
+      } finally { this.loading.query = false }
+    },
+    async columnSearch() {
+      const d = await this.apiCall('columnSearch', { tables: this.selectedTables, column: this.column })
+      this.isSnippetResponse = true; this.response = d?.html || ''
+    },
+    async toString() {
+      const d = await this.apiCall('toString', { tables: this.selectedTables })
+      this.isSnippetResponse = true; this.response = d?.html || ''
+    },
+    async snippets() {
+      const d = await this.apiCall('snippets', { tables: this.selectedTables })
+      this.isSnippetResponse = true; this.response = d?.html || ''
+    },
+    async vue() {
+      const d = await this.apiCall('vue', { tables: this.selectedTables })
+      this.isSnippetResponse = true; this.response = d?.html || ''
+    },
+    async showSizes() {
+      const d = await this.apiCall('showSizes', { tables: this.selectedTables })
+      this.isSnippetResponse = false; this.response = d?.html || ''
+    },
+
+    // ── Operations ──
+    async truncateTables() {
+      const d = await this.apiCall('truncateTables', { tables: this.selectedTables, dryRun: this.dryRun.tableOperations, confirmation: this.confirmation.tableOperations })
+      this.isSnippetResponse = false; this.response = d?.html || ''
+    },
+    async dropTables() {
+      const d = await this.apiCall('dropTables', { tables: this.selectedTables, dryRun: this.dryRun.tableOperations, confirmation: this.confirmation.tableOperations })
+      this.isSnippetResponse = false; this.response = d?.html || ''
+    },
+    async renameTable() {
+      if (!this.selectedTables[0]) return alert('Select one table')
+      const d = await this.apiCall('renameTable', { table: this.selectedTables[0], newTableName: this.newTableName, confirmation: this.confirmation.renameTable })
+      this.response = d?.html || ''
+    },
+    async cloneTable() {
+      if (!this.selectedTables[0]) return alert('Select one table')
+      const d = await this.apiCall('cloneTable', { table: this.selectedTables[0], newTableName: this.newTableName, confirmation: this.confirmation.renameTable })
+      this.response = d?.html || ''
+    },
+    async alterColumn() {
+      const d = await this.apiCall('alterColumn', { tables: this.selectedTables, column: this.column, newColumnName: this.newColumnName, newColumnType: this.newColumnType, dryRun: this.dryRun.columnOperations })
+      this.isSnippetResponse = true; this.response = d?.html || ''
+    },
+    async dropColumn() {
+      const d = await this.apiCall('dropColumn', { tables: this.selectedTables, column: this.column, dryRun: this.dryRun.columnOperations, confirmation: this.confirmation.columnOperations })
+      this.isSnippetResponse = true; this.response = d?.html || ''
+    },
+    async insertAfterColumn() {
+      const d = await this.apiCall('insertAfterColumn', { tables: this.selectedTables, column: this.column, newColumnName: this.newColumnName, newColumnType: this.newColumnType, dryRun: this.dryRun.columnOperations })
+      this.isSnippetResponse = true; this.response = d?.html || ''
+    },
+    async insertFakeData() {
+      if (!this.selectedTables[0]) return alert('Select a table')
+      const d = await this.apiCall('insertFakeData', { table: this.selectedTables[0], confirmation: this.confirmation.tableOperations })
+      this.response = d?.html || ''
+    },
+    async executeBuilderQuery() {
+      if (!this.selectedTables[0]) return alert('Select a table')
+      const t = this.selectedTables[0]
+      const { operation, setColumn, setValue, whereColumn, whereValue } = this.queryBuilder
+      let q = ''
+      if (operation === 'select') q = `SELECT * FROM \`${t}\` WHERE ${whereColumn} = '${whereValue}'`
+      else if (operation === 'update') q = `UPDATE \`${t}\` SET ${setColumn} = '${setValue}' WHERE ${whereColumn} = '${whereValue}'`
+      else q = `DELETE FROM \`${t}\` WHERE ${whereColumn} = '${whereValue}'`
+      this.queryString = q
+      await this.executeQuery()
+    },
+
+    // ── Database ops ──
+    async getPeerPatch() {
+      const d = await this.apiCall('getPeerPatch', { tables: this.selectedTables, peerConnection: parseInt(this.selectedPeerConnection) || 0 })
+      this.isSnippetResponse = true; this.response = d?.html || ''
+    },
+    async copyTables() {
+      const d = await this.apiCall('copyTables', { tables: this.selectedTables, peerConnection: parseInt(this.selectedPeerConnection) || 0, dryRun: this.dryRun.databaseOperations, confirmation: this.confirmation.databaseOperations })
+      this.isSnippetResponse = true; this.response = d?.html || ''
+    },
+    async cloneDatabase() {
+      const d = await this.apiCall('cloneDatabase', { peerConnection: parseInt(this.selectedPeerConnection) || 0, dryRun: this.dryRun.databaseOperations, confirmation: this.confirmation.databaseOperations })
+      this.isSnippetResponse = false; this.response = d?.html || ''
+    },
+
+    // ── Exporter ──
+    async exportQuickReportData() {
+      this.loading.export = true
+      try {
+        const resp = await axios({
+          method: 'post', url: '/api/exportQuickReportData',
+          responseType: 'blob',
+          headers: this.authHeader,
+          data: {
+            query: this.quickReportQueryString,
+            columns: this.quickReportColumns,
+            columnTitles: this.quickReportColumnTitles,
+            decimalColumns: this.quickReportDecimalColumns,
+            textColumns: this.quickReportTextColumns,
+            summableColumns: this.quickReportSummableColumns,
+            alignCenterColumns: this.quickReportAlignCenterColumns,
+            sheetSeparationColumn: this.quickReportSheetSeparationColumn,
+            columnWidths: this.quickReportColumnWidths,
+          }
+        })
+        const url = URL.createObjectURL(resp.data)
+        const a = document.createElement('a'); a.href = url; a.download = 'DATA.xlsx'; a.click()
+        URL.revokeObjectURL(url)
+        this.saveReportHistory()
+      } finally { this.loading.export = false }
+    },
+    loadReport(r) {
+      Object.assign(this, {
+        quickReportQueryString: r.query || '',
+        quickReportColumns: r.columns || '',
+        quickReportColumnTitles: r.columnTitles || '',
+        quickReportDecimalColumns: r.decimalColumns || '',
+        quickReportTextColumns: r.textColumns || '',
+        quickReportSummableColumns: r.summableColumns || '',
+        quickReportAlignCenterColumns: r.alignCenterColumns || '',
+        quickReportSheetSeparationColumn: r.sheetSeparationColumn || '',
+        quickReportColumnWidths: r.columnWidths || '',
+      })
+    },
+
+    // ── Importer ──
+    async importSqlFile() {
+      this.loading.import = true
+      try {
+        const d = await this.apiCall('importSqlFile', { path: this.importSqlFilePath })
+        this.isSnippetResponse = false; this.response = d?.html || ''
+      } finally { this.loading.import = false }
+    },
+
+    // ── AI ──
+    async sendChatMessage() {
+      if (!this.ai.message) return
+      this.loading.ai = true
+      try {
+        const d = await this.apiCall('sendChatMessage', { tables: this.selectedTables, message: this.ai.message })
+        this.isSnippetResponse = false; this.response = d?.html || ''
+      } finally { this.loading.ai = false }
+    },
+    async generateCompactFormLayout() {
+      this.loading.ai = true
+      try {
+        const d = await this.apiCall('generateCompactFormLayout', { tables: this.selectedTables, dryRun: this.dryRun.gptOperation })
+        this.isSnippetResponse = true; this.response = d?.html || ''
+      } finally { this.loading.ai = false }
+    },
+
+    // ── Editor form ──
+    async loadEditorColumns() {
+      if (!this.selectedTables[0]) return
+      const d = await this.apiCall('getTableColumns', { table: this.selectedTables[0] })
+      if (d?.columns) {
+        this.editorColumns = d.columns
+        this.editorData = {}
+        d.columns.forEach(c => this.editorData[c] = '')
+      }
+    },
+    async insertTableRow() {
+      if (!this.selectedTables[0]) return
+      const d = await this.apiCall('insertTableRow', { table: this.selectedTables[0], data: this.editorData })
+      if (d?.success) {
+        this.response = `Saved. ID = ${d.id}`
+        this.editorData = {}
+        this.editorColumns.forEach(c => this.editorData[c] = '')
+        await this.showData()
+      }
+    },
+
+    // ── Inline cell editing ──
+    onResponsePaneClick(e) {
+      const td = e.target.closest('td.editable-cell')
+      if (!td) return
+
+      const table = td.dataset.table
+      const column = td.dataset.column
+      const uuid = td.dataset.uuid
+      if (!table || !column) return
+
+      const editor = document.getElementById('inline-editor')
+      const rect = td.getBoundingClientRect()
+      editor.value = td.innerText
+      editor.style.left = rect.left + 'px'
+      editor.style.top = rect.top + 'px'
+      editor.style.width = rect.width + 'px'
+      editor.style.height = rect.height + 'px'
+      editor.style.display = 'block'
+      editor.focus()
+      editor.select()
+
+      this._inlineEdit = { table, column, uuid, cell: td }
+    },
+    async commitInlineEdit() {
+      const { table, column, uuid, cell } = this._inlineEdit
+      const editor = document.getElementById('inline-editor')
+      editor.style.display = 'none'
+      if (!table || !cell) return
+
+      const newValue = editor.value
+      if (newValue === cell.innerText) return
+
+      // Build an UPDATE via executeQuery
+      const q = `UPDATE \`${table}\` SET \`${column}\` = '${newValue.replace(/'/g, "\\'")}' WHERE UUID = '${uuid}'`
+      await this.apiCall('executeQuery', { query: q + '//Confirmed', tables: [table] })
+      cell.innerText = newValue
+    },
+    cancelInlineEdit() {
+      document.getElementById('inline-editor').style.display = 'none'
+    },
+
+    // ── Query autocomplete & history ──
+    handleQueryInput() {
+      const v = this.queryString.toLowerCase()
+      if (v.length < 2) { this.showQuerySuggestions = false; return }
+      const words = new Set([
+        ...this.tables.map(t => t.table),
+        ...this.availColumnNames,
+        'SELECT * FROM', 'WHERE', 'ORDER BY', 'GROUP BY', 'LIMIT',
+        'LEFT JOIN', 'INNER JOIN', 'ON', 'AND', 'OR', 'LIKE', 'IN',
+      ])
+      const last = v.split(/\s+/).pop()
+      this.querySuggestions = [...words].filter(w => w.toLowerCase().startsWith(last) && w.toLowerCase() !== last).slice(0, 12)
+      this.showQuerySuggestions = this.querySuggestions.length > 0
+      this.selectedQuerySuggestionIndex = -1
+    },
+    selectQuerySuggestion(s) {
+      const parts = this.queryString.split(/\s+/)
+      parts[parts.length - 1] = s
+      this.queryString = parts.join(' ') + ' '
+      this.showQuerySuggestions = false
+    },
+    handleQueryArrowUp() {
+      if (this.selectedQuerySuggestionIndex > 0) this.selectedQuerySuggestionIndex--
+    },
+    handleQueryArrowDown() {
+      if (this.selectedQuerySuggestionIndex < this.querySuggestions.length - 1) this.selectedQuerySuggestionIndex++
+    },
+    onClickQueryHistory(q) {
+      this.queryString = q
+      this.showQueryHistory = false
+    },
+    addQueryHistory(q) {
+      this.queryHistory = [q, ...this.queryHistory.filter(x => x !== q)].slice(0, 50)
+      this.saveQueryHistory()
+    },
+    saveQueryHistory() { localStorage.setItem('dbviewer_queryHistory', JSON.stringify(this.queryHistory)) },
+    saveReportHistory() {
+      const r = {
+        query: this.quickReportQueryString,
+        columns: this.quickReportColumns,
+        columnTitles: this.quickReportColumnTitles,
+        decimalColumns: this.quickReportDecimalColumns,
+        textColumns: this.quickReportTextColumns,
+        summableColumns: this.quickReportSummableColumns,
+        alignCenterColumns: this.quickReportAlignCenterColumns,
+        sheetSeparationColumn: this.quickReportSheetSeparationColumn,
+        columnWidths: this.quickReportColumnWidths,
+      }
+      if (!r.query) return
+      this.reportHistory = [r, ...this.reportHistory.filter(x => x.query !== r.query)].slice(0, 20)
+      localStorage.setItem('dbviewer_reportHistory', JSON.stringify(this.reportHistory))
+    },
+
+    // ── Column autocomplete ──
+    handleColumnInput() { this.showColumnSuggestions = true },
+    handleColumnFocus() {
+      if (this.availColumnNames.length) this.showColumnSuggestions = true
+    },
+    hideColumnSuggestions() { setTimeout(() => this.showColumnSuggestions = false, 150) },
+    selectColumnName(n) { this.column = n; this.showColumnSuggestions = false },
+  },
+  watch: {
+    activeView(val) { localStorage.setItem('dbviewer_activeView', val) }
+  },
+  mounted() {
+    if (this.isAuthenticated) {
+      this.loadConnections()
+    }
+  }
+}).mount('#app')
+</script>
+</body>
+</html>
