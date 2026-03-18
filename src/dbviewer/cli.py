@@ -25,6 +25,17 @@ def main() -> None:
     parser.add_argument("--change-password", action="store_true", help="Change a user's password interactively")
     parser.add_argument("--create-user", nargs=2, metavar=("USERNAME", "PASSWORD"), help="Create a user (used by installer)")
     parser.add_argument("--update", action="store_true", help="Update to the latest version from GitHub")
+    parser.add_argument("--ssl-cert", default=None, metavar="CERT_FILE",
+                        help="Path to SSL certificate file (.pem) for HTTPS, or 'auto' to generate a dev cert with trustme")
+    parser.add_argument("--ssl-key", default=None, metavar="KEY_FILE",
+                        help="Path to SSL private key file (.pem) for HTTPS")
+    parser.add_argument("--install-service", action="store_true",
+                        help="Write a systemd user service file and exit")
+    parser.add_argument("--log-level", default="warning",
+                        choices=["critical", "error", "warning", "info", "debug"],
+                        help="Uvicorn log level (default: warning)")
+    parser.add_argument("--demo", action="store_true",
+                        help="Start in demo mode with an in-process SQLite database (no real DB needed)")
 
     args = parser.parse_args()
 
@@ -77,6 +88,17 @@ def main() -> None:
         print(f"Password for '{username}' updated.")
         sys.exit(0)
 
+    # --install-service
+    if args.install_service:
+        from .service import write_systemd_service
+        write_systemd_service(
+            host=args.host,
+            port=args.port,
+            data_dir=args.data_dir,
+            no_auth=args.no_auth,
+        )
+        import sys; sys.exit(0)
+
     # Default: start the server
     from .server import start_server
 
@@ -86,4 +108,8 @@ def main() -> None:
         data_dir=args.data_dir,
         no_auth=args.no_auth,
         open_browser=args.open_browser,
+        ssl_cert=args.ssl_cert,
+        ssl_key=args.ssl_key,
+        log_level=args.log_level,
+        demo=args.demo,
     )

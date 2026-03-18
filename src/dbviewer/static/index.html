@@ -10,7 +10,7 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 body {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif;
-  font-size: 14px; background: #fff; color: #1f2328; height: 100vh; overflow: hidden;
+  font-size: 14px; height: 100vh; overflow: hidden;
 }
 :root {
   --bg: #fff; --bg2: #f6f8fa; --border: #d0d7de;
@@ -20,6 +20,10 @@ body {
   --btn-hover: #f3f4f6; --radius: 6px;
   --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
 }
+/* Dark mode — applies when OS/browser prefers dark OR when .dark class is set on <html> */
+@media (prefers-color-scheme: dark) { :root:not(.light) { --bg:#0d1117; --bg2:#161b22; --border:#30363d; --text:#e6edf3; --text2:#8b949e; --accent:#58a6ff; --success:#3fb950; --danger:#f85149; --btn-bg:#21262d; --btn-border:rgba(240,246,252,0.1); --btn-hover:#30363d; } }
+:root.dark { --bg:#0d1117; --bg2:#161b22; --border:#30363d; --text:#e6edf3; --text2:#8b949e; --accent:#58a6ff; --success:#3fb950; --danger:#f85149; --btn-bg:#21262d; --btn-border:rgba(240,246,252,0.1); --btn-hover:#30363d; }
+body { background: var(--bg); color: var(--text); }
 
 /* ── Layout ── */
 .app-layout { display: flex; height: 100vh; }
@@ -78,6 +82,12 @@ select {
 }
 select:focus { border-color: var(--accent); }
 select[multiple] { flex: 1; min-height: 200px; font-family: var(--mono); font-size: 12px; }
+
+/* ── Sortable table headers ── */
+.response-pane table th.sortable { cursor:pointer; user-select:none; }
+.response-pane table th.sortable:hover { background:var(--btn-hover); }
+.sort-arrow { font-size:10px; margin-left:3px; opacity:.5; }
+th.sort-active .sort-arrow { opacity:1; }
 
 /* ── Response pane ── */
 .response-pane {
@@ -197,7 +207,12 @@ hr.sep { border: none; border-top: 1px solid var(--border); margin: 4px 0; }
         <button @click="selectedTables=[]" style="padding:1px 6px;font-size:11px">Clear</button>
       </div>
       <hr class="sep">
-      <button @click="logout" style="width:100%;color:var(--danger)">Sign out</button>
+      <div style="display:flex;gap:6px">
+        <button @click="toggleTheme" style="flex:1;font-size:12px" :title="isDark?'Switch to light mode':'Switch to dark mode'">
+          {{ isDark ? '☀ Light' : '🌙 Dark' }}
+        </button>
+        <button @click="logout" style="flex:1;color:var(--danger);font-size:12px">Sign out</button>
+      </div>
     </aside>
 
     <!-- Right panel -->
@@ -220,7 +235,10 @@ hr.sep { border: none; border-top: 1px solid var(--border); margin: 4px 0; }
             <button @click="describe">Describe</button>
             <button @click="showData()">Data</button>
             <button @click="showEditorForm=!showEditorForm">New</button>
-            <input type="text" v-model="limitIdFrom" placeholder="From,To" style="width:100px">
+            <input type="text" v-model="dataLimit" placeholder="Limit" style="width:60px" title="Rows per page">
+            <button @click="prevPage" :disabled="dataOffset===0" title="Previous page">◀</button>
+            <span style="font-size:11px;color:var(--text2)">{{ dataOffset }}+</span>
+            <button @click="nextPage" title="Next page">▶</button>
             <button @click="showIndexes">Indexes</button>
             <button @click="dropIndexes">Drop indexes</button>
             <button @click="toString">To string</button>
@@ -427,6 +445,138 @@ hr.sep { border: none; border-top: 1px solid var(--border); margin: 4px 0; }
           <div class="response-pane" v-html="response"></div>
         </template>
 
+        <!-- ── SETTINGS tab ── -->
+        <template v-if="activeView === 'settings'">
+          <!-- Sub-tab selector -->
+          <div class="toolbar" style="border-bottom:1px solid var(--border);padding-bottom:6px;margin-bottom:8px">
+            <button @click="settingsView='connections'"
+                    :style="settingsView==='connections'?'color:var(--accent);font-weight:600;border-color:var(--accent)':''">
+              Connections
+            </button>
+            <button @click="settingsView='users';loadUsers()"
+                    :style="settingsView==='users'?'color:var(--accent);font-weight:600;border-color:var(--accent)':''">
+              Users
+            </button>
+          </div>
+
+          <!-- ── Connections sub-tab ── -->
+          <div v-if="settingsView==='connections'" style="display:flex;gap:16px;flex:1;min-height:0;overflow:hidden">
+
+            <!-- Connection list -->
+            <div style="width:42%;border-right:1px solid var(--border);padding-right:12px;overflow-y:auto">
+              <div class="section-header" style="margin-bottom:8px">Connections</div>
+              <div v-for="(c, i) in fullConnections" :key="i"
+                   style="border:1px solid var(--border);border-radius:6px;padding:8px 10px;margin-bottom:6px;display:flex;gap:8px;align-items:center">
+                <div style="flex:1;min-width:0">
+                  <div style="font-weight:600;font-size:13px">{{ c.name }}</div>
+                  <div style="font-size:11px;color:var(--text2)">{{ c.type }} · {{ c.server }}:{{ c.port }} · {{ c.database }}</div>
+                </div>
+                <button @click="editConnection(i)" style="padding:2px 8px;font-size:11px">Edit</button>
+                <button @click="deleteConnection(i)" class="danger" style="padding:2px 8px;font-size:11px">✕</button>
+              </div>
+              <button @click="resetConnForm()" style="width:100%;margin-top:4px">+ Add connection</button>
+            </div>
+
+            <!-- Connection form -->
+            <div style="flex:1;overflow-y:auto">
+              <div class="section-header" style="margin-bottom:8px">
+                {{ connEditIndex >= 0 ? 'Edit: ' + (fullConnections[connEditIndex]?.name || '') : 'New connection' }}
+              </div>
+              <div class="row-gap">
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+                  <div>
+                    <label class="section-header">Name</label>
+                    <input type="text" class="wide" v-model="connForm.name" placeholder="My Database">
+                  </div>
+                  <div>
+                    <label class="section-header">Type</label>
+                    <select v-model="connForm.type" style="width:100%">
+                      <option value="mysql">MySQL</option>
+                      <option value="postgres">PostgreSQL</option>
+                      <option value="mssql">MSSQL</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label class="section-header">Server / Host</label>
+                    <input type="text" class="wide" v-model="connForm.server" placeholder="localhost">
+                  </div>
+                  <div>
+                    <label class="section-header">Port</label>
+                    <input type="number" class="wide" v-model.number="connForm.port">
+                  </div>
+                  <div>
+                    <label class="section-header">Database</label>
+                    <input type="text" class="wide" v-model="connForm.database" placeholder="mydb">
+                  </div>
+                  <div>
+                    <label class="section-header">Username</label>
+                    <input type="text" class="wide" v-model="connForm.user" placeholder="root">
+                  </div>
+                </div>
+                <div>
+                  <label class="section-header">Password</label>
+                  <input type="password" class="wide" v-model="connForm.password" placeholder="Leave blank to keep existing">
+                </div>
+                <div class="toolbar">
+                  <button class="primary" @click="saveConnection">
+                    {{ connEditIndex >= 0 ? 'Update' : 'Add' }}
+                  </button>
+                  <button @click="testConnectionForm">Test connection</button>
+                  <button @click="resetConnForm">Cancel</button>
+                </div>
+                <div v-if="connTestResult" style="font-family:var(--mono);font-size:12px;white-space:pre-wrap;padding:8px;border:1px solid var(--border);border-radius:6px;background:var(--bg2)">{{ connTestResult }}</div>
+              </div>
+            </div>
+          </div><!-- /connections sub-tab -->
+
+          <!-- ── Users sub-tab ── -->
+          <div v-if="settingsView==='users'" style="display:flex;gap:16px;flex:1;min-height:0">
+            <!-- User list -->
+            <div style="width:40%;border-right:1px solid var(--border);padding-right:12px;overflow-y:auto">
+              <div class="section-header" style="margin-bottom:8px">User accounts</div>
+              <div v-for="u in userList" :key="u"
+                   style="border:1px solid var(--border);border-radius:6px;padding:7px 10px;margin-bottom:5px;display:flex;gap:8px;align-items:center">
+                <span style="flex:1;font-family:var(--mono);font-size:13px">{{ u }}</span>
+                <button @click="startChangePassword(u)" style="padding:2px 8px;font-size:11px">Change pw</button>
+                <button @click="deleteUser(u)" class="danger" style="padding:2px 8px;font-size:11px"
+                        :disabled="userList.length===1">✕</button>
+              </div>
+              <button @click="startAddUser()" style="width:100%;margin-top:4px">+ Add user</button>
+            </div>
+            <!-- User form -->
+            <div style="flex:1;overflow-y:auto">
+              <template v-if="userEditMode">
+                <div class="section-header" style="margin-bottom:8px">
+                  {{ userEditMode==='add' ? 'New user' : 'Change password: ' + userForm.username }}
+                </div>
+                <div class="row-gap">
+                  <div v-if="userEditMode==='add'">
+                    <label class="section-header">Username</label>
+                    <input type="text" class="wide" v-model="userForm.username" placeholder="username">
+                  </div>
+                  <div>
+                    <label class="section-header">New password</label>
+                    <input type="password" class="wide" v-model="userForm.password" placeholder="••••••••">
+                  </div>
+                  <div>
+                    <label class="section-header">Confirm password</label>
+                    <input type="password" class="wide" v-model="userForm.confirmPassword" placeholder="••••••••">
+                  </div>
+                  <div class="toolbar">
+                    <button class="primary" @click="saveUser">Save</button>
+                    <button @click="cancelUserEdit">Cancel</button>
+                  </div>
+                  <div v-if="userMessage" :style="'font-size:12px;padding:6px;border-radius:4px;border:1px solid;' + (userMessage.startsWith('✅') ? 'color:var(--success);border-color:var(--success)' : 'color:var(--danger);border-color:var(--danger)')">
+                    {{ userMessage }}
+                  </div>
+                </div>
+              </template>
+              <div v-else style="color:var(--text2);font-size:13px;padding-top:8px">Select a user or add a new one.</div>
+            </div>
+          </div><!-- /users sub-tab -->
+
+        </template>
+
       </div><!-- /tab-content -->
     </main>
   </div><!-- /app-layout -->
@@ -442,6 +592,7 @@ createApp({
   data() {
     return {
       isAuthenticated: !!localStorage.getItem('dbviewer_auth'),
+      isDark: localStorage.getItem('dbviewer_theme') === 'dark' || (localStorage.getItem('dbviewer_theme') !== 'light' && window.matchMedia('(prefers-color-scheme: dark)').matches),
       loginForm: { username: '', password: '' },
       loginError: '',
       connections: [],
@@ -458,6 +609,7 @@ createApp({
         { id: 'exporter', label: 'Exporter' },
         { id: 'importer', label: 'Importer' },
         { id: 'ai', label: 'AI Generator' },
+        { id: 'settings', label: 'Settings' },
       ],
       response: '',
       isSnippetResponse: false,
@@ -471,6 +623,23 @@ createApp({
       querySuggestions: [],
       selectedQuerySuggestionIndex: -1,
       limitIdFrom: '',
+      dataOffset: 0,
+      dataLimit: 100,
+      dataTableRowCount: 0,
+      // Connection settings
+      settingsView: 'connections',
+      connForm: { name: '', type: 'mysql', server: 'localhost', port: 3306, database: '', user: '', password: '' },
+      connEditIndex: -1,
+      fullConnections: [],
+      connTestResult: '',
+      // User management
+      userList: [],
+      userForm: { username: '', password: '', confirmPassword: '' },
+      userEditMode: '',
+      userMessage: '',
+      // Column sort
+      sortCol: '',
+      sortDir: 'asc',
       newTableName: '',
       newColumnName: '',
       newColumnType: '',
@@ -512,7 +681,10 @@ createApp({
     },
     authHeader() {
       const auth = localStorage.getItem('dbviewer_auth')
-      return auth ? { Authorization: `Basic ${auth}` } : {}
+      if (!auth) return {}
+      // Include session ID so multiple tabs don't clobber each other's active connection
+      const sessionId = localStorage.getItem('dbviewer_session_id') || ''
+      return { Authorization: `Basic ${auth}`, 'X-Session-Id': sessionId }
     }
   },
   methods: {
@@ -525,6 +697,10 @@ createApp({
         if (r.data.success) {
           const creds = btoa(`${this.loginForm.username}:${this.loginForm.password}`)
           localStorage.setItem('dbviewer_auth', creds)
+          // Generate a unique session ID for this browser tab
+          if (!localStorage.getItem('dbviewer_session_id')) {
+            localStorage.setItem('dbviewer_session_id', Math.random().toString(36).slice(2) + Date.now().toString(36))
+          }
           this.isAuthenticated = true
           this.loginForm.password = ''
           this.loadConnections()
@@ -580,8 +756,14 @@ createApp({
       if (d?.tables) {
         this.tables = d.tables
         this.selectedTables = []
-        // Load column names for autocomplete
+        this.dataOffset = 0
+        this.connTestResult = ''
         this.loadColumnNames()
+      } else if (d && !d.success && d.diagnostics) {
+        const diag = d.diagnostics
+        alert(`Connection failed: ${d.message}
+
+Hint: ${diag.hint}`)
       }
     },
     async refreshConnection() {
@@ -609,11 +791,18 @@ createApp({
       const d = await this.apiCall('describe', { tables: this.selectedTables })
       this.isSnippetResponse = false; this.response = d?.html || ''
     },
-    async showData(isPeer = false) {
-      const d = await this.apiCall('data', { tables: this.selectedTables, limitIdFrom: this.limitIdFrom })
+    async showData(isPeer = false, offset = null) {
+      if (offset !== null) this.dataOffset = offset
+      const limitIdFrom = `${this.dataOffset},${this.dataOffset + this.dataLimit}`
+      const d = await this.apiCall('data', { tables: this.selectedTables, limitIdFrom })
       this.isSnippetResponse = false; this.response = d?.html || ''
-      // Load editor columns for first selected table
       if (this.selectedTables[0]) this.loadEditorColumns()
+    },
+    prevPage() {
+      if (this.dataOffset >= this.dataLimit) this.showData(false, this.dataOffset - this.dataLimit)
+    },
+    nextPage() {
+      this.showData(false, this.dataOffset + this.dataLimit)
     },
     async showIndexes() {
       const d = await this.apiCall('indexes', { tables: this.selectedTables })
@@ -805,6 +994,18 @@ createApp({
 
     // ── Inline cell editing ──
     onResponsePaneClick(e) {
+      // Handle sortable column header clicks
+      const th = e.target.closest('th.sortable')
+      if (th) {
+        const col = th.dataset.col
+        if (!col) return
+        const table = th.closest('table')
+        if (!table) return
+        this._sortTableDom(table, col)
+        return
+      }
+
+      // Handle inline cell editing
       const td = e.target.closest('td.editable-cell')
       if (!td) return
 
@@ -826,6 +1027,39 @@ createApp({
 
       this._inlineEdit = { table, column, uuid, cell: td }
     },
+    _sortTableDom(table, col) {
+      // Find column index
+      const headers = Array.from(table.querySelectorAll('thead th'))
+      const colIndex = headers.findIndex(h => h.dataset.col === col)
+      if (colIndex < 0) return
+
+      // Determine sort direction
+      const currentDir = table.dataset.sortDir === 'asc' && table.dataset.sortCol === col ? 'desc' : 'asc'
+      table.dataset.sortDir = currentDir
+      table.dataset.sortCol = col
+
+      // Update arrow indicators
+      headers.forEach(h => {
+        const arrow = h.querySelector('.sort-arrow')
+        if (arrow) arrow.textContent = h.dataset.col === col ? (currentDir === 'asc' ? ' ▲' : ' ▼') : ' ⇅'
+        h.classList.toggle('sort-active', h.dataset.col === col)
+      })
+
+      // Sort tbody rows
+      const tbody = table.querySelector('tbody')
+      if (!tbody) return
+      const rows = Array.from(tbody.querySelectorAll('tr'))
+      rows.sort((a, b) => {
+        const aVal = a.cells[colIndex]?.textContent?.trim() ?? ''
+        const bVal = b.cells[colIndex]?.textContent?.trim() ?? ''
+        const aNum = parseFloat(aVal.replace(/,/g, ''))
+        const bNum = parseFloat(bVal.replace(/,/g, ''))
+        let cmp = (!isNaN(aNum) && !isNaN(bNum)) ? aNum - bNum : aVal.localeCompare(bVal)
+        return currentDir === 'asc' ? cmp : -cmp
+      })
+      rows.forEach(r => tbody.appendChild(r))
+    },
+
     async commitInlineEdit() {
       const { table, column, uuid, cell } = this._inlineEdit
       const editor = document.getElementById('inline-editor')
@@ -842,6 +1076,143 @@ createApp({
     },
     cancelInlineEdit() {
       document.getElementById('inline-editor').style.display = 'none'
+    },
+
+    // ── Theme toggle ──
+    toggleTheme() {
+      this.isDark = !this.isDark
+    },
+
+    // ── Column sort ──
+    sortTable(col) {
+      if (this.sortCol === col) {
+        this.sortDir = this.sortDir === 'asc' ? 'desc' : 'asc'
+      } else {
+        this.sortCol = col
+        this.sortDir = 'asc'
+      }
+    },
+
+    // ── User management ──
+    async loadUsers() {
+      const d = await this.apiCall('users', {}, 'get')
+      if (d?.users) this.userList = d.users
+    },
+    startAddUser() {
+      this.userForm = { username: '', password: '', confirmPassword: '' }
+      this.userEditMode = 'add'
+      this.userMessage = ''
+    },
+    startChangePassword(username) {
+      this.userForm = { username, password: '', confirmPassword: '' }
+      this.userEditMode = 'password'
+      this.userMessage = ''
+    },
+    cancelUserEdit() {
+      this.userEditMode = ''
+      this.userMessage = ''
+    },
+    async saveUser() {
+      if (this.userForm.password !== this.userForm.confirmPassword) {
+        this.userMessage = '❌ Passwords do not match'
+        return
+      }
+      if (!this.userForm.password) {
+        this.userMessage = '❌ Password cannot be empty'
+        return
+      }
+      if (this.userEditMode === 'add' && !this.userForm.username.trim()) {
+        this.userMessage = '❌ Username cannot be empty'
+        return
+      }
+      try {
+        if (this.userEditMode === 'add') {
+          const d = await this.apiCall('users/add', {
+            username: this.userForm.username.trim(),
+            password: this.userForm.password
+          })
+          if (d?.success) {
+            this.userList = d.users
+            this.userMessage = `✅ User "${this.userForm.username}" created`
+            this.userForm = { username: '', password: '', confirmPassword: '' }
+            this.userEditMode = ''
+          } else {
+            this.userMessage = '❌ ' + (d?.message || 'Failed')
+          }
+        } else {
+          const d = await this.apiCall('users/password', {
+            username: this.userForm.username,
+            new_password: this.userForm.password
+          })
+          if (d?.success) {
+            this.userMessage = '✅ ' + d.message
+            this.userForm = { ...this.userForm, password: '', confirmPassword: '' }
+            this.userEditMode = ''
+          } else {
+            this.userMessage = '❌ ' + (d?.message || 'Failed')
+          }
+        }
+      } catch(e) {
+        this.userMessage = '❌ Request failed'
+      }
+    },
+    async deleteUser(username) {
+      if (!confirm(\`Delete user "${username}"?\`)) return
+      const d = await this.apiCall('users/delete', { username })
+      if (d?.success) {
+        this.userList = d.users
+        if (this.userForm.username === username) this.cancelUserEdit()
+      }
+    },
+
+    // ── Settings — Connection CRUD ──
+    async loadFullConnections() {
+      const d = await this.apiCall('connections/full', {}, 'get')
+      if (d?.connections) this.fullConnections = d.connections
+    },
+    editConnection(i) {
+      const c = this.fullConnections[i]
+      this.connForm = { ...c, password: '' }
+      this.connEditIndex = i
+    },
+    resetConnForm() {
+      this.connForm = { name: '', type: 'mysql', server: 'localhost', port: 3306, database: '', user: '', password: '' }
+      this.connEditIndex = -1
+      this.connTestResult = ''
+    },
+    async saveConnection() {
+      if (this.connEditIndex >= 0) {
+        await this.apiCall('connections/update', { index: this.connEditIndex, ...this.connForm })
+      } else {
+        await this.apiCall('connections/add', { ...this.connForm })
+      }
+      await this.loadFullConnections()
+      await this.loadConnections()
+      this.resetConnForm()
+    },
+    async deleteConnection(i) {
+      if (!confirm(`Delete connection "${this.fullConnections[i].name}"?`)) return
+      await this.apiCall('connections/delete', { index: i })
+      await this.loadFullConnections()
+      await this.loadConnections()
+      this.resetConnForm()
+    },
+    async testConnectionForm() {
+      // Save first so the index is valid, then test
+      const saveBody = this.connEditIndex >= 0
+        ? { index: this.connEditIndex, ...this.connForm }
+        : { ...this.connForm }
+      // For an unsaved connection, temporarily add it
+      let testIndex = this.connEditIndex
+      if (testIndex < 0) {
+        const r = await this.apiCall('connections/add', { ...this.connForm })
+        testIndex = r?.index ?? 0
+      }
+      const d = await this.apiCall('testConnection', { connection: testIndex })
+      this.connTestResult = d?.success
+        ? `✅ ${d.message}`
+        : `❌ ${d.message}${d.diagnostics?.hint ? '
+Hint: ' + d.diagnostics.hint : ''}`
     },
 
     // ── Query autocomplete & history ──
@@ -906,11 +1277,32 @@ createApp({
     selectColumnName(n) { this.column = n; this.showColumnSuggestions = false },
   },
   watch: {
-    activeView(val) { localStorage.setItem('dbviewer_activeView', val) }
+    activeView(val) { localStorage.setItem('dbviewer_activeView', val) },
+    isDark(val) {
+      document.documentElement.classList.toggle('dark', val)
+      document.documentElement.classList.toggle('light', !val)
+      localStorage.setItem('dbviewer_theme', val ? 'dark' : 'light')
+    },
+    // Port auto-fill when connection type changes
+    'connForm.type'(val) {
+      const defaults = { mysql: 3306, postgres: 5432, mssql: 1433, sqlite: 0 }
+      if (defaults[val] !== undefined) this.connForm.port = defaults[val]
+    }
   },
   mounted() {
+    // Apply persisted theme on load
+    if (this.isDark) {
+      document.documentElement.classList.add('dark')
+    } else {
+      document.documentElement.classList.add('light')
+    }
+    // Ensure session_id exists so multi-tab isolation works from the first request
+    if (!localStorage.getItem('dbviewer_session_id')) {
+      localStorage.setItem('dbviewer_session_id', Math.random().toString(36).slice(2) + Date.now().toString(36))
+    }
     if (this.isAuthenticated) {
       this.loadConnections()
+      this.loadFullConnections()
     }
   }
 }).mount('#app')

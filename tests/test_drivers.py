@@ -148,7 +148,7 @@ class TestExportAsHtmlTable:
         rows = [{"ID": 1, "NAME": "Alice"}]
         result = self.driver.export_as_html_table("USERS", rows, ["ID", "NAME"], [])
         assert "<table" in result
-        assert "<th>ID</th>" in result
+        assert "ID" in result and "sortable" in result
         assert "Alice" in result
 
     def test_index_column(self):

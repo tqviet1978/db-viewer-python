@@ -281,7 +281,7 @@ class GenericDriver(ABC):
         html += '<table border="1" cellspacing="5" cellpadding="5">'
         html += "<thead><tr><th>#</th>"
         for col in columns:
-            html += f"<th>{col}</th>"
+            html += f'<th class="sortable" data-col="{col}">{col}<span class="sort-arrow"> ⇅</span></th>'
         html += "</tr></thead><tbody>"
 
         for idx, row in enumerate(rows, 1):
