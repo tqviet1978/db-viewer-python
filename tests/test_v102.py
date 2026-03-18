@@ -420,6 +420,10 @@ class TestDemoMode:
 
 # ─── Auto-cert generation ─────────────────────────────────────────────────────
 
+@pytest.mark.skipif(
+    __import__("importlib.util", fromlist=["find_spec"]).find_spec("trustme") is None,
+    reason="trustme not installed (pip install trustme)"
+)
 class TestAutoCert:
     def test_generate_dev_cert_creates_files(self):
         from dbviewer.server import generate_dev_cert

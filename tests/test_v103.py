@@ -503,7 +503,14 @@ class TestDarkModeCssCoverage:
     """Verify that the frontend CSS covers all required dark-mode variable usages."""
 
     def _css(self):
-        return open('/home/claude/db-viewer-python/src/dbviewer/static/index.html').read()
+        from pathlib import Path
+        import dbviewer
+        # Resolve path relative to the installed package — works on any machine
+        pkg_dir = Path(dbviewer.__file__).parent
+        html_path = pkg_dir / "static" / "index.html"
+        if not html_path.exists():
+            pytest.skip(f"index.html not found at {html_path}")
+        return html_path.read_text(encoding="utf-8")
 
     def test_result_table_uses_css_variables(self):
         css = self._css()
