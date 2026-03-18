@@ -41,9 +41,8 @@ MySQL / PostgreSQL / MSSQL
 The application is a single FastAPI server that serves both the static frontend (a single `index.html` file with embedded Vue.js) and the JSON API. There is no separate build step for the frontend — the HTML file uses CDN-loaded Vue.js 3, Axios, and CSS.
 
 All state is stored in:
-- JSON files on disk (user accounts, sessions, connection configs)
-- Server-side session memory (active connection, table cache)
-- Browser localStorage (UI state, query history, report history)
+- JSON files on disk (user accounts, connection configs)
+- Browser localStorage (credentials, UI state, query history, report history)
 
 ---
 
@@ -55,7 +54,7 @@ All state is stored in:
 - Serves the static `index.html` at the root path `/`
 - Mounts all API routes under `/api`
 - Runs via Uvicorn, configurable host/port
-- Session management via in-memory dict keyed by session token
+- Fully stateless — no server-side sessions
 
 ### 2.2 Module Layout
 
@@ -63,7 +62,7 @@ All state is stored in:
 |--------|---------------|
 | `server.py` | FastAPI app creation, static file serving, Uvicorn launch |
 | `config.py` | App-level configuration (data dir, version, defaults) |
-| `auth.py` | User management, password hashing (bcrypt), session tokens |
+| `auth.py` | User management, password hashing (bcrypt), credential verification |
 | `api.py` | All API route handlers — the main controller |
 | `drivers/base.py` | `GenericDriver` — abstract base class with shared logic |
 | `drivers/mysql.py` | MySQL driver using `pymysql` |
@@ -77,13 +76,18 @@ All state is stored in:
 | `__main__.py` | `python -m dbviewer` entry point |
 | `__init__.py` | Package version |
 
-### 2.3 Session Management
+### 2.3 Authentication Model
 
-- Sessions are stored in-memory as a Python dict: `{token: {user, connection_id, table_cache, expires}}`
-- Session token is a 64-character hex string generated via `secrets.token_hex(32)`
-- Sessions expire after 7 days
-- A background task cleans expired sessions every hour
-- The active database connection ID and cached table list are stored per-session
+The server is **fully stateless** — there are no server-side sessions. Authentication works as follows:
+
+1. Client sends `{username, password}` to `/api/login`
+2. Server verifies against bcrypt hash in `users.json`, returns `{success: true}` or `{success: false}`
+3. On success, client stores `base64(username:password)` in `localStorage`
+4. Every subsequent API request includes an `Authorization: Basic <base64>` header
+5. Server decodes and verifies credentials on **every request** (stateless)
+6. Logout = client clears `localStorage`
+
+This eliminates the need for session storage, token cleanup, and expiry management.
 
 ---
 
@@ -367,8 +371,7 @@ All API endpoints are under `/api`. All accept POST with JSON body and return JS
 
 | Endpoint | Method | Body | Description |
 |----------|--------|------|-------------|
-| `/api/login` | POST | `{username, password}` | Returns `{success, token}` |
-| `/api/logout` | POST | `{token}` | Invalidates session |
+| `/api/login` | POST | `{username, password}` | Verifies credentials, returns `{success: true/false}` |
 
 ### 5.2 Connection Management
 
@@ -379,7 +382,7 @@ All API endpoints are under `/api`. All accept POST with JSON body and return JS
 
 ### 5.3 Table Operations
 
-All endpoints below require an active connection (set via `setActiveConnection`). The session token is sent via `Authorization: Bearer <token>` header.
+All endpoints below require an active connection (set via `setActiveConnection`). Credentials are sent via `Authorization: Basic <base64(user:pass)>` header on every request.
 
 | Endpoint | Body Parameters | Description |
 |----------|----------------|-------------|
@@ -637,11 +640,19 @@ Column type analysis:
 
 ### 7.1 Login Flow
 
-1. User sends `{username, password}` to `/api/login`
-2. Server verifies password against bcrypt hash stored in `users.json`
-3. On success, creates a session token and returns it
-4. Client stores token in localStorage
-5. All subsequent API requests include `Authorization: Bearer <token>` header
+1. User opens the app — if not authenticated, a login form is displayed
+2. User enters username and password, submits the form
+3. Client sends `{username, password}` to `/api/login`
+4. Server loads `users.json`, finds the user, verifies password against bcrypt hash
+5. On success, returns `{success: true}`
+6. Client stores `base64(username:password)` in `localStorage`
+7. All subsequent API requests include `Authorization: Basic <base64>` header
+8. Server decodes the header and verifies credentials on **every request**
+9. If verification fails, server returns 401 — client clears localStorage and shows the login form
+
+**The server is fully stateless.** There are no sessions, tokens, or expiry timers. This simplifies the codebase and eliminates the need for background cleanup tasks.
+
+**Logout:** Client clears the stored credentials from `localStorage` and reloads the page.
 
 ### 7.2 No-Auth Mode
 
@@ -652,7 +663,6 @@ When started with `--no-auth`, all authentication checks are bypassed. The login
 | File | Format | Content |
 |------|--------|---------|
 | `users.json` | `[{username, password_hash}]` | User accounts |
-| `sessions.json` | `{token: {user, expires}}` | Active sessions |
 
 ### 7.4 Password Management
 
@@ -800,7 +810,7 @@ db-viewer-python/
 │       ├── cli.py                   # CLI argument parsing
 │       ├── server.py                # FastAPI app, Uvicorn launch
 │       ├── config.py                # App configuration
-│       ├── auth.py                  # Authentication, sessions, bcrypt
+│       ├── auth.py                  # Authentication, bcrypt verification
 │       ├── api.py                   # All API route handlers
 │       ├── name_helper.py           # Name transformations
 │       ├── code_generator.py        # Vue/snippet code generation
@@ -930,7 +940,7 @@ The UI follows a **GitHub-inspired light theme** with these characteristics:
 
 | Test File | Coverage |
 |-----------|----------|
-| `test_auth.py` | Password hashing, login, session creation/expiry |
+| `test_auth.py` | Password hashing, login verification, no-auth mode |
 | `test_name_helper.py` | All name transformation functions |
 | `test_code_generator.py` | Vue code generation, snippet generation, column type analysis |
 | `test_schema_diff.py` | Schema comparison algorithm, SQL generation |

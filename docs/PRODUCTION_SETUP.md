@@ -282,6 +282,5 @@ When exposing dbviewer to the public internet, keep these points in mind:
 | `curl localhost:9876` works but public URL returns 502 | cloudflared not running or wrong port in config | Check `sudo systemctl status cloudflared` and verify port in `~/.cloudflared/config.yml` |
 | Public URL returns a Cloudflare 1033 error | Tunnel is down | Run `sudo systemctl restart cloudflared` |
 | DNS not resolving yet | DNS propagation delay | Wait 1–2 minutes after first setup; check with `dig db-viewer.yourdomain.com` |
-| Login works locally but session expires instantly on public URL | Clock skew between server and Cloudflare | Sync server time with `sudo timedatectl set-ntp true` |
 | `cloudflared service install` fails | Missing `sudo` or credentials not found | Ensure you ran `cloudflared tunnel login` first and `~/.cloudflared/cert.pem` exists |
 | Database connections fail after reboot | Database service not started yet | Ensure your database starts before dbviewer: add `After=mysql.service` (or equivalent) to the service file |

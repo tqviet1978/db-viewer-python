@@ -190,12 +190,13 @@ A typical workflow:
 
 # Authentication
 
-The app uses token-based authentication with bcrypt-hashed passwords.
+The app uses stateless Basic Auth with bcrypt-hashed passwords.
 
-1. User logs in with username and password
-2. Server creates a session token (valid for 7 days)
-3. Token is sent with every subsequent request
-4. Sessions auto-expire and are cleaned up automatically
+1. User logs in via a custom login form
+2. Server verifies credentials against bcrypt hash
+3. Client stores encoded credentials in localStorage
+4. Every API request includes credentials — server verifies each time
+5. No server-side sessions — fully stateless
 
 Change the password at any time:
 
@@ -248,7 +249,6 @@ All data is stored in `~/.dbviewer/data/` as plain JSON files. No database requi
 | File | Purpose |
 |------|---------|
 | users.json | User accounts |
-| sessions.json | Active login sessions |
 | connections.json | Database connection configurations |
 | config.json | Optional app settings (AI keys, etc.) |
 
