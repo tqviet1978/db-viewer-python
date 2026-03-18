@@ -322,6 +322,22 @@
         border-radius: 10px; padding: 1px 6px; color: var(--text2);
     }
 
+    /* ── Confirm dialog modal ── */
+    .confirm-modal {
+        background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-lg);
+        box-shadow: var(--shadow-overlay);
+        width: 380px; max-width: 96vw;
+        display: flex; flex-direction: column; overflow: hidden;
+    }
+    .confirm-modal .confirm-body {
+        padding: var(--sp-5) var(--sp-5) var(--sp-4);
+        font-size: 14px; line-height: 1.5; color: var(--text);
+    }
+    .confirm-modal .confirm-footer {
+        display: flex; justify-content: flex-end; gap: var(--sp-2);
+        padding: var(--sp-3) var(--sp-4); border-top: 1px solid var(--border);
+    }
+
     /* ── Modal ── */
     .modal-overlay {
         position: fixed; inset: 0; z-index: 800;
@@ -713,8 +729,7 @@
 
                     <!-- ── Connections sub-tab ── -->
                     <div v-if="settingsView==='connections'" style="flex:1;overflow-y:auto">
-                        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-                            <div class="section-header" style="margin:0">Connections</div>
+                        <div style="display:flex;align-items:center;justify-content:flex-start;margin-bottom:10px">
                             <button @click="openAddConn()">
                                 <svg class="octicon" viewBox="0 0 16 16" width="16" height="16"><path d="M7.75 2a.75.75 0 0 1 .75.75V7h4.25a.75.75 0 0 1 0 1.5H8.5v4.25a.75.75 0 0 1-1.5 0V8.5H2.75a.75.75 0 0 1 0-1.5H7V2.75A.75.75 0 0 1 7.75 2Z"></path></svg>
                                 Add connection
@@ -738,8 +753,7 @@
 
                     <!-- ── Users sub-tab ── -->
                     <div v-if="settingsView==='users'" style="flex:1;overflow-y:auto">
-                        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-                            <div class="section-header" style="margin:0">User accounts</div>
+                        <div style="display:flex;align-items:center;justify-content:flex-start;margin-bottom:10px">
                             <button @click="startAddUser()">
                                 <svg class="octicon" viewBox="0 0 16 16" width="16" height="16"><path d="M7.75 2a.75.75 0 0 1 .75.75V7h4.25a.75.75 0 0 1 0 1.5H8.5v4.25a.75.75 0 0 1-1.5 0V8.5H2.75a.75.75 0 0 1 0-1.5H7V2.75A.75.75 0 0 1 7.75 2Z"></path></svg>
                                 Add user
@@ -857,6 +871,17 @@
         </div>
     </div>
 
+    <!-- ── Confirm Dialog ── -->
+    <div class="modal-overlay" v-if="confirmDialog.visible" style="z-index:900">
+        <div class="confirm-modal">
+            <div class="confirm-body">{{ confirmDialog.message }}</div>
+            <div class="confirm-footer">
+                <button @click="confirmDialog.resolve(false); confirmDialog.visible=false">Cancel</button>
+                <button class="danger" @click="confirmDialog.resolve(true); confirmDialog.visible=false">Delete</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Inline cell editor -->
     <input id="inline-editor" type="text" @blur="commitInlineEdit" @keyup.enter="commitInlineEdit" @keyup.esc="cancelInlineEdit">
 </div>
@@ -915,6 +940,7 @@ createApp({
             userMessage: null,
             showConnModal: false,
             showUserModal: false,
+            confirmDialog: { visible: false, message: '', resolve: null },
             // Column sort
             sortCol: '',
             sortDir: 'asc',
@@ -966,6 +992,13 @@ createApp({
         }
     },
     methods: {
+        // ── Confirm dialog ──
+        showConfirm(message) {
+            return new Promise(resolve => {
+                this.confirmDialog = { visible: true, message, resolve }
+            })
+        },
+
         // ── Auth ──
         async login() {
             this.loading.login = true
@@ -1085,7 +1118,7 @@ createApp({
             this.isSnippetResponse = true; this.response = d?.html || ''
         },
         async dropIndexes() {
-            if (!confirm('Drop all indexes from selected tables?')) return
+            if (!await this.showConfirm('Drop all indexes from selected tables?')) return
             const d = await this.apiCall('dropIndexes', { tables: this.selectedTables })
             this.isSnippetResponse = true; this.response = d?.html || ''
         },
@@ -1443,7 +1476,7 @@ createApp({
             }
         },
         async deleteUser(username) {
-            if (!confirm(`Delete user "${username}"?`)) return
+            if (!await this.showConfirm(`Delete user "${username}"?`)) return
             const d = await this.apiCall('users/delete', { username })
             if (d?.success) {
                 this.userList = d.users
@@ -1493,7 +1526,7 @@ createApp({
             this.resetConnForm()
         },
         async deleteConnection(i) {
-            if (!confirm(`Delete connection "${this.fullConnections[i].name}"?`)) return
+            if (!await this.showConfirm(`Delete connection "${this.fullConnections[i].name}"?`)) return
             await this.apiCall('connections/delete', { index: i })
             await this.loadFullConnections()
             await this.loadConnections()
