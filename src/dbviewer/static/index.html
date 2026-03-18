@@ -1191,7 +1191,7 @@ Hint: ${diag.hint}`)
       }
     },
     async deleteUser(username) {
-      if (!confirm(\`Delete user "${username}"?\`)) return
+      if (!confirm(`Delete user "${username}"?`)) return
       const d = await this.apiCall('users/delete', { username })
       if (d?.success) {
         this.userList = d.users
