@@ -2,8 +2,6 @@
 
 A web-based database management and exploration tool for developers. Connects to MySQL, PostgreSQL, and MSSQL databases. Provides schema browsing, data viewing, SQL execution, schema comparison, Excel export, code generation, and AI-assisted query building — all from a single-page web interface.
 
-This is a Python rewrite of the [original PHP version](https://github.com/cloudpad9/db-viewer). Same features, modern stack, simpler installation.
-
 Built with **Python / FastAPI (backend)** and **Vue.js 3 (frontend)**.
 Designed to be **self-hosted, simple, and fast**.
 
