@@ -313,6 +313,29 @@
         display: flex; align-items: center;
     }
 
+    /* ── Spinner ── */
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .spinner {
+        display: inline-block; flex-shrink: 0;
+        width: 14px; height: 14px;
+        border: 2px solid var(--border);
+        border-top-color: var(--accent);
+        border-radius: 50%;
+        animation: spin .65s linear infinite;
+    }
+    .spinner-lg {
+        width: 20px; height: 20px;
+        border-width: 2.5px;
+    }
+    .tables-loading {
+        flex: 1; display: flex; flex-direction: column;
+        align-items: center; justify-content: center;
+        gap: 8px; min-height: 80px;
+        color: var(--text2); font-size: 12px;
+        border: 1px solid var(--border); border-radius: var(--radius);
+        background: var(--bg);
+    }
+
     /* ── Misc ── */
     .section-header { font-weight: 600; font-size: 12px; color: var(--text2); margin: 4px 0 2px; }
     .row-gap { display: flex; flex-direction: column; gap: 5px; }
@@ -426,15 +449,20 @@
                 <option value="">— select —</option>
                 <option v-for="(c, i) in connections" :key="i" :value="i">{{ c }}</option>
             </select>
-            <button @click="refreshConnection" style="width:100%">
-                <svg class="octicon" viewBox="0 0 16 16" width="16" height="16">
+            <button @click="refreshConnection" style="width:100%" :disabled="loading.tables">
+                <span v-if="loading.tables" class="spinner"></span>
+                <svg v-else class="octicon" viewBox="0 0 16 16" width="16" height="16">
                     <path d="M1.705 8.005a.75.75 0 0 1 .834.656 5.5 5.5 0 0 0 9.592 2.97l-1.204-1.204a.25.25 0 0 1 .177-.427h3.646a.25.25 0 0 1 .25.25v3.646a.25.25 0 0 1-.427.177l-1.38-1.38A7.002 7.002 0 0 1 1.05 8.84a.75.75 0 0 1 .656-.834ZM8 2.5a5.487 5.487 0 0 0-4.131 1.869l1.204 1.204A.25.25 0 0 1 4.896 6H1.25A.25.25 0 0 1 1 5.75V2.104a.25.25 0 0 1 .427-.177l1.38 1.38A7.002 7.002 0 0 1 14.95 7.16a.75.75 0 0 1-1.49.178A5.5 5.5 0 0 0 8 2.5Z"></path>
                 </svg>
-                Refresh
+                {{ loading.tables ? 'Loading…' : 'Refresh' }}
             </button>
             <hr class="sep">
-            <input type="text" v-model="tableFilterKeyword" placeholder="Filter tables…" style="width:100%">
-            <select multiple v-model="selectedTables" style="flex:1">
+            <input type="text" v-model="tableFilterKeyword" placeholder="Filter tables…" style="width:100%" :disabled="loading.tables">
+            <div v-if="loading.tables" class="tables-loading">
+                <span class="spinner spinner-lg"></span>
+                <span>Loading tables…</span>
+            </div>
+            <select v-else multiple v-model="selectedTables" style="flex:1">
                 <option v-for="t in filteredTables" :key="t.table" :value="t.table">{{ t.title }}</option>
             </select>
             <div style="display:flex;justify-content:space-between">
@@ -848,7 +876,10 @@
                 <button class="primary" @click="saveConnectionModal()">
                     {{ connEditIndex >= 0 ? 'Update' : 'Add' }}
                 </button>
-                <button @click="testConnectionForm()">Test connection</button>
+                <button @click="testConnectionForm()" :disabled="loading.testConn">
+                    <span v-if="loading.testConn" class="spinner"></span>
+                    {{ loading.testConn ? 'Testing…' : 'Test connection' }}
+                </button>
                 <button @click="closeConnModal()" style="margin-left:auto">Cancel</button>
             </div>
         </div>
@@ -1080,22 +1111,33 @@ createApp({
         },
         async onConnectionChanged() {
             if (this.selectedConnection === '') return
-            const d = await this.apiCall('setActiveConnection', { connection: parseInt(this.selectedConnection) })
-            if (d?.tables) {
-                this.tables = d.tables
-                this.selectedTables = []
-                this.dataOffset = 0
-                this.connTestResult = null
-                this.loadColumnNames()
-            } else if (d && !d.success && d.diagnostics) {
-                const diag = d.diagnostics
-                alert(`Connection failed: ${d.message}\n\nHint: ${diag.hint}`)
+            this.loading.tables = true
+            this.tables = []
+            this.selectedTables = []
+            try {
+                const d = await this.apiCall('setActiveConnection', { connection: parseInt(this.selectedConnection) })
+                if (d?.tables) {
+                    this.tables = d.tables
+                    this.dataOffset = 0
+                    this.connTestResult = null
+                    this.loadColumnNames()
+                } else if (d && !d.success && d.diagnostics) {
+                    const diag = d.diagnostics
+                    alert(`Connection failed: ${d.message}\n\nHint: ${diag.hint}`)
+                }
+            } finally {
+                this.loading.tables = false
             }
         },
         async refreshConnection() {
             if (this.selectedConnection === '') return
-            const d = await this.apiCall('setActiveConnection', { connection: parseInt(this.selectedConnection), reload: true })
-            if (d?.tables) this.tables = d.tables
+            this.loading.tables = true
+            try {
+                const d = await this.apiCall('setActiveConnection', { connection: parseInt(this.selectedConnection), reload: true })
+                if (d?.tables) this.tables = d.tables
+            } finally {
+                this.loading.tables = false
+            }
         },
         async loadColumnNames() {
             const allTables = this.tables.map(t => t.table)
@@ -1550,20 +1592,22 @@ createApp({
             this.resetConnForm()
         },
         async testConnectionForm() {
-            // Save first so the index is valid, then test
-            const saveBody = this.connEditIndex >= 0
-                ? { index: this.connEditIndex, ...this.connForm }
-                : { ...this.connForm }
-            // For an unsaved connection, temporarily add it
-            let testIndex = this.connEditIndex
-            if (testIndex < 0) {
-                const r = await this.apiCall('connections/add', { ...this.connForm })
-                testIndex = r?.index ?? 0
+            this.loading.testConn = true
+            this.connTestResult = null
+            try {
+                // For an unsaved connection, temporarily add it
+                let testIndex = this.connEditIndex
+                if (testIndex < 0) {
+                    const r = await this.apiCall('connections/add', { ...this.connForm })
+                    testIndex = r?.index ?? 0
+                }
+                const d = await this.apiCall('testConnection', { connection: testIndex })
+                this.connTestResult = d?.success
+                    ? { type: 'success', text: d.message }
+                    : { type: 'error', text: `${d.message}${d.diagnostics?.hint ? '\nHint: ' + d.diagnostics.hint : ''}` }
+            } finally {
+                this.loading.testConn = false
             }
-            const d = await this.apiCall('testConnection', { connection: testIndex })
-            this.connTestResult = d?.success
-                ? { type: 'success', text: d.message }
-                : { type: 'error', text: `${d.message}${d.diagnostics?.hint ? '\nHint: ' + d.diagnostics.hint : ''}` }
         },
 
         // ── Query autocomplete & history ──
