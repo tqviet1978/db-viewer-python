@@ -313,6 +313,26 @@
         display: flex; align-items: center;
     }
 
+    /* ── GitHub-style underline tabs ── */
+    .settings-tabs {
+        display: flex; gap: 0; border-bottom: 1px solid var(--border);
+        margin-bottom: 16px;
+        background: var(--bg2);
+        border-radius: var(--radius) var(--radius) 0 0;
+        padding: 0 4px;
+    }
+    .settings-tab {
+        display: inline-flex; align-items: center; gap: 6px;
+        padding: 8px 16px; font-size: 14px; font-weight: 400;
+        color: var(--text2); background: none; border: none;
+        border-bottom: 2px solid transparent; margin-bottom: -1px;
+        cursor: pointer; white-space: nowrap; border-radius: 0;
+        transition: color .12s, border-color .12s;
+    }
+    .settings-tab:hover { color: var(--text); background: none; border-bottom-color: var(--border-muted); }
+    .settings-tab:active { background: none; }
+    .settings-tab.active { color: var(--text); font-weight: 600; border-bottom: 2px solid var(--danger); }
+
     /* ── Spinner ── */
     @keyframes spin { to { transform: rotate(360deg); } }
     .spinner {
@@ -508,7 +528,6 @@
                         <button @click="showStructure">Structure</button>
                         <button @click="describe">Describe</button>
                         <button @click="showData()">Data</button>
-                        <button @click="showEditorForm=!showEditorForm">New</button>
                         <input type="text" v-model="dataLimit" placeholder="Limit" style="width:60px" title="Rows per page">
                         <button @click="prevPage" :disabled="dataOffset===0" title="Previous page">
                             <svg class="octicon" viewBox="0 0 16 16" width="16" height="16"><path d="M9.78 12.78a.75.75 0 0 1-1.06 0L4.47 8.53a.75.75 0 0 1 0-1.06l4.25-4.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042L6.06 8l3.72 3.72a.75.75 0 0 1 0 1.06Z"></path></svg>
@@ -557,18 +576,6 @@
                         <input type="text" class="wide" v-model="ai.message"
                                placeholder="Ask AI…" @keyup.enter="sendChatMessage">
                         <button @click="sendChatMessage" :disabled="loading.ai">Send</button>
-                    </div>
-                    <!-- Editor form -->
-                    <div v-if="showEditorForm" class="toolbar row-gap" style="border:1px solid var(--border);padding:8px;border-radius:6px">
-                        <div class="section-header">Insert / Update row in: {{ selectedTables[0] }}</div>
-                        <div v-for="col in editorColumns" :key="col" style="display:flex;gap:6px;align-items:center">
-                            <label style="width:140px;font-size:12px">{{ col }}</label>
-                            <input type="text" class="wide" v-model="editorData[col]" :placeholder="col">
-                        </div>
-                        <div style="display:flex;gap:6px">
-                            <button class="primary" @click="insertTableRow">{{ editorData.ID ? 'Update' : 'Insert' }}</button>
-                            <button @click="showEditorForm=false">Cancel</button>
-                        </div>
                     </div>
                     <div style="display:flex;flex:1;min-height:0;gap:8px">
                         <div class="response-pane" ref="responsePane"
@@ -758,23 +765,23 @@
 
                 <!-- ── SETTINGS tab ── -->
                 <template v-if="activeView === 'settings'">
-                    <!-- Sub-tab selector -->
-                    <div class="toolbar" style="border-bottom:1px solid var(--border);padding-bottom:6px;margin-bottom:8px">
-                        <button @click="settingsView='connections'"
-                                :style="settingsView==='connections' ? 'color:var(--accent);font-weight:600;border-color:var(--accent)' : ''">
+                    <!-- Sub-tab selector — GitHub underline style -->
+                    <nav class="settings-tabs">
+                        <button class="settings-tab" :class="{active: settingsView==='connections'}"
+                                @click="settingsView='connections'">
                             <svg class="octicon" viewBox="0 0 16 16" width="16" height="16"><path d="M4 8H2.5a1 1 0 0 0-1 1v5.25a.75.75 0 0 1-1.5 0V9a2.5 2.5 0 0 1 2.5-2.5H4V5.133a1.75 1.75 0 0 1 1.533-1.737l2.831-.353.76-.913c.332-.4.825-.63 1.344-.63h.782c.966 0 1.75.784 1.75 1.75V4h2.25a.75.75 0 0 1 0 1.5H13v4h2.25a.75.75 0 0 1 0 1.5H13v.75a1.75 1.75 0 0 1-1.75 1.75h-.782c-.519 0-1.012-.23-1.344-.63l-.761-.912-2.83-.354A1.75 1.75 0 0 1 4 9.867Zm6.276-4.91-.95 1.14a.753.753 0 0 1-.483.265l-3.124.39a.25.25 0 0 0-.219.248v4.734c0 .126.094.233.219.249l3.124.39a.752.752 0 0 1 .483.264l.95 1.14a.25.25 0 0 0 .192.09h.782a.25.25 0 0 0 .25-.25v-8.5a.25.25 0 0 0-.25-.25h-.782a.25.25 0 0 0-.192.09Z"></path></svg>
                             Connections
                         </button>
-                        <button @click="settingsView='users';loadUsers()"
-                                :style="settingsView==='users' ? 'color:var(--accent);font-weight:600;border-color:var(--accent)' : ''">
+                        <button class="settings-tab" :class="{active: settingsView==='users'}"
+                                @click="settingsView='users';loadUsers()">
                             <svg class="octicon" viewBox="0 0 16 16" width="16" height="16"><path d="M2 5.5a3.5 3.5 0 1 1 5.898 2.549 5.508 5.508 0 0 1 3.034 4.084.75.75 0 1 1-1.482.235 4 4 0 0 0-7.9 0 .75.75 0 0 1-1.482-.236A5.507 5.507 0 0 1 3.102 8.05 3.493 3.493 0 0 1 2 5.5ZM11 4a3.001 3.001 0 0 1 2.22 5.018 5.01 5.01 0 0 1 2.56 3.012.749.749 0 0 1-.885.954.752.752 0 0 1-.549-.514 3.507 3.507 0 0 0-2.522-2.372.75.75 0 0 1-.574-.73v-.352a.75.75 0 0 1 .416-.672A1.5 1.5 0 0 0 11 5.5.75.75 0 0 1 11 4Zm-5.5-.5a2 2 0 1 0-.001 3.999A2 2 0 0 0 5.5 3.5Z"></path></svg>
                             Users
                         </button>
-                    </div>
+                    </nav>
 
                     <!-- ── Connections sub-tab ── -->
                     <div v-if="settingsView==='connections'" style="flex:1;overflow-y:auto">
-                        <div style="display:flex;align-items:center;justify-content:flex-end;margin-bottom:10px">
+                        <div style="display:flex;align-items:center;justify-content:flex-start;margin-bottom:10px">
                             <button @click="openAddConn()">
                                 <svg class="octicon" viewBox="0 0 16 16" width="16" height="16"><path d="M7.75 2a.75.75 0 0 1 .75.75V7h4.25a.75.75 0 0 1 0 1.5H8.5v4.25a.75.75 0 0 1-1.5 0V8.5H2.75a.75.75 0 0 1 0-1.5H7V2.75A.75.75 0 0 1 7.75 2Z"></path></svg>
                                 Add connection
@@ -798,7 +805,7 @@
 
                     <!-- ── Users sub-tab ── -->
                     <div v-if="settingsView==='users'" style="flex:1;overflow-y:auto">
-                        <div style="display:flex;align-items:center;justify-content:flex-end;margin-bottom:10px">
+                        <div style="display:flex;align-items:center;justify-content:flex-start;margin-bottom:10px">
                             <button @click="startAddUser()">
                                 <svg class="octicon" viewBox="0 0 16 16" width="16" height="16"><path d="M7.75 2a.75.75 0 0 1 .75.75V7h4.25a.75.75 0 0 1 0 1.5H8.5v4.25a.75.75 0 0 1-1.5 0V8.5H2.75a.75.75 0 0 1 0-1.5H7V2.75A.75.75 0 0 1 7.75 2Z"></path></svg>
                                 Add user
@@ -1011,9 +1018,6 @@ createApp({
             reportHistory: JSON.parse(localStorage.getItem('dbviewer_reportHistory') || '[]'),
             importSqlFilePath: '',
             ai: { message: '' },
-            showEditorForm: false,
-            editorColumns: [],
-            editorData: {},
             hasAi: false,
             loading: {},
             // inline editor state
@@ -1164,7 +1168,6 @@ createApp({
             const limitIdFrom = `${this.dataOffset},${this.dataOffset + this.dataLimit}`
             const d = await this.apiCall('data', { tables: this.selectedTables, limitIdFrom })
             this.isSnippetResponse = false; this.response = d?.html || ''
-            if (this.selectedTables[0]) this.loadEditorColumns()
         },
         prevPage() {
             if (this.dataOffset >= this.dataLimit) this.showData(false, this.dataOffset - this.dataLimit)
@@ -1340,26 +1343,6 @@ createApp({
         },
 
         // ── Editor form ──
-        async loadEditorColumns() {
-            if (!this.selectedTables[0]) return
-            const d = await this.apiCall('getTableColumns', { table: this.selectedTables[0] })
-            if (d?.columns) {
-                this.editorColumns = d.columns
-                this.editorData = {}
-                d.columns.forEach(c => this.editorData[c] = '')
-            }
-        },
-        async insertTableRow() {
-            if (!this.selectedTables[0]) return
-            const d = await this.apiCall('insertTableRow', { table: this.selectedTables[0], data: this.editorData })
-            if (d?.success) {
-                this.response = `Saved. ID = ${d.id}`
-                this.editorData = {}
-                this.editorColumns.forEach(c => this.editorData[c] = '')
-                await this.showData()
-            }
-        },
-
         // ── Inline cell editing ──
         onResponsePaneClick(e) {
             // Handle sortable column header clicks
