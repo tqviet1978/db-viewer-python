@@ -219,7 +219,7 @@
     .response-pane h2 { font-size: 13px; color: var(--text2); margin: 6px 0 4px; }
     .snippets-textarea {
         width: 100%; height: 100%; resize: none; border: none; outline: none;
-        font-family: var(--mono); font-size: 12px; background: transparent; color: var(--text);
+        font-family: var(--mono); font-size: 14px; background: transparent; color: var(--text);
         padding: 0;
     }
 
@@ -372,10 +372,27 @@
     }
 
     /* ── Exporter field rows ── */
-    .exporter-field { display: flex; flex-direction: column; gap: 4px; }
-    .exporter-field label { font-weight: 600; font-size: 12px; color: var(--text2); }
+    .exporter-field { display: flex; flex-direction: column; gap: 6px; }
+    .exporter-field label {
+        font-weight: 600; font-size: 14px; color: var(--text);
+        line-height: 1.3;
+    }
+    .exporter-field input[type=text],
+    .exporter-field input[type=password],
+    .exporter-field input[type=number],
+    .exporter-field select {
+        padding: 6px 12px; font-size: 14px;
+        border: 1px solid var(--border); border-radius: var(--radius);
+        background: var(--bg); color: var(--text); width: 100%;
+        outline: none; line-height: 1.4;
+        transition: border-color .15s, box-shadow .15s;
+    }
+    .exporter-field input:focus,
+    .exporter-field select:focus {
+        border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-subtle);
+    }
     .exporter-grid {
-        display: grid; grid-template-columns: 1fr 1fr; gap: 10px 12px;
+        display: grid; grid-template-columns: 1fr 1fr; gap: 16px 20px;
     }
     </style>
 </head>
@@ -630,9 +647,9 @@
                 <!-- ── EXPORTER tab ── -->
                 <template v-if="activeView === 'exporter'">
                     <div style="display:flex;gap:10px;flex:1;min-height:0">
-                        <div class="row-gap" style="flex:1">
+                        <div style="flex:1;display:flex;flex-direction:column;gap:16px">
                             <textarea v-model="quickReportQueryString" rows="4" placeholder="SQL query…"
-                                      style="width:100%;border:1px solid var(--border);border-radius:6px;padding:8px;font-family:var(--mono);font-size:13px;resize:vertical"></textarea>
+                                      style="width:100%;border:1px solid var(--border);border-radius:6px;padding:6px 12px;font-family:var(--mono);font-size:14px;resize:vertical;outline:none;background:var(--bg);color:var(--text);transition:border-color .15s,box-shadow .15s" @focus="$event.target.style.borderColor='var(--accent)';$event.target.style.boxShadow='0 0 0 3px var(--accent-subtle)'" @blur="$event.target.style.borderColor='var(--border)';$event.target.style.boxShadow='none'"></textarea>
                             <div class="exporter-grid">
                                 <div class="exporter-field">
                                     <label>Columns</label>
@@ -729,7 +746,7 @@
 
                     <!-- ── Connections sub-tab ── -->
                     <div v-if="settingsView==='connections'" style="flex:1;overflow-y:auto">
-                        <div style="display:flex;align-items:center;justify-content:flex-start;margin-bottom:10px">
+                        <div style="display:flex;align-items:center;justify-content:flex-end;margin-bottom:10px">
                             <button @click="openAddConn()">
                                 <svg class="octicon" viewBox="0 0 16 16" width="16" height="16"><path d="M7.75 2a.75.75 0 0 1 .75.75V7h4.25a.75.75 0 0 1 0 1.5H8.5v4.25a.75.75 0 0 1-1.5 0V8.5H2.75a.75.75 0 0 1 0-1.5H7V2.75A.75.75 0 0 1 7.75 2Z"></path></svg>
                                 Add connection
@@ -753,7 +770,7 @@
 
                     <!-- ── Users sub-tab ── -->
                     <div v-if="settingsView==='users'" style="flex:1;overflow-y:auto">
-                        <div style="display:flex;align-items:center;justify-content:flex-start;margin-bottom:10px">
+                        <div style="display:flex;align-items:center;justify-content:flex-end;margin-bottom:10px">
                             <button @click="startAddUser()">
                                 <svg class="octicon" viewBox="0 0 16 16" width="16" height="16"><path d="M7.75 2a.75.75 0 0 1 .75.75V7h4.25a.75.75 0 0 1 0 1.5H8.5v4.25a.75.75 0 0 1-1.5 0V8.5H2.75a.75.75 0 0 1 0-1.5H7V2.75A.75.75 0 0 1 7.75 2Z"></path></svg>
                                 Add user
